@@ -17,9 +17,13 @@ const apresentacoes = new Map();
 app.use(cors());
 app.use(express.json());
 
-// Serve o frontend
+// Serve o frontend PDF
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
+
+// Serve o CRM
+app.use('/crm', express.static(path.join(__dirname, '../frontend/crm')));
+app.get('/crm/*', (_, res) => res.sendFile(path.join(__dirname, '../frontend/crm/index.html')));
 
 app.post('/api/extrair', async (req, res) => {
   const { urls } = req.body;
@@ -50,6 +54,35 @@ app.post('/api/extrair', async (req, res) => {
 });
 
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+
+app.post('/api/claude-proxy', async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY não configurada.' } });
+
+  const { prompt, maxTokens = 1000 } = req.body;
+  if (!prompt) return res.status(400).json({ error: { message: "Campo 'prompt' ausente." } });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) return res.status(response.status).json({ error: { message: data?.error?.message || 'Erro da API Claude.' } });
+    res.json({ text: data?.content?.[0]?.text || '' });
+  } catch (e) {
+    res.status(500).json({ error: { message: e.message } });
+  }
+});
 
 app.post('/api/salvar', (req, res) => {
   const { imoveis } = req.body;
