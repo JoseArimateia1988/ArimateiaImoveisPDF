@@ -47,6 +47,16 @@ app.post('/api/extrair', async (req, res) => {
 
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
 
+app.get('/debug-env', (_, res) => {
+  const names = Object.keys(process.env).sort();
+  const key = process.env.ANTHROPIC_API_KEY;
+  res.json({
+    anthropic_key_present: !!key,
+    anthropic_key_preview: key ? key.slice(0, 8) + '...' : null,
+    all_var_names: names,
+  });
+});
+
 app.listen(PORT, () => {
   const key = process.env.ANTHROPIC_API_KEY;
   console.log(`Servidor rodando em http://localhost:${PORT}`);
