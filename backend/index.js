@@ -167,6 +167,31 @@ app.get('/resultado/:id', async (req, res) => {
   }
 });
 
+app.get('/api/leads', async (req, res) => {
+  try {
+    const r = await supa('leads?select=id,nome,empreendimento,stage&order=nome.asc');
+    if (!r.ok) return res.status(500).json({ error: 'Erro ao buscar leads' });
+    res.json(await r.json());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/vincular', async (req, res) => {
+  const { leadId, apresentacaoId } = req.body;
+  if (!leadId || !apresentacaoId) return res.status(400).json({ error: 'leadId e apresentacaoId obrigatórios' });
+  try {
+    const r = await supa(`leads?id=eq.${leadId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ apresentacao_id: apresentacaoId }),
+    });
+    if (!r.ok) return res.status(500).json({ error: 'Erro ao vincular' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/debug-env', (_, res) => {
   const names = Object.keys(process.env).sort();
   const key = process.env.ANTHROPIC_API_KEY;

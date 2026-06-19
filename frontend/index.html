@@ -331,7 +331,7 @@ async function gerarLink() {
     await navigator.clipboard.writeText(linkCliente);
     btn.textContent = '🔗 Compartilhar';
     btn.disabled = false;
-    mostrarModal(linkCliente, linkResultado);
+    mostrarModal(linkCliente, linkResultado, id);
   } catch {
     btn.textContent = '🔗 Compartilhar';
     btn.disabled = false;
@@ -339,9 +339,22 @@ async function gerarLink() {
   }
 }
 
-function mostrarModal(linkCliente, linkResultado) {
+async function mostrarModal(linkCliente, linkResultado, apresentacaoId) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem';
+
+  // Busca leads para o seletor
+  let leads = [];
+  try {
+    const r = await fetch(`${BACKEND}/api/leads`);
+    leads = await r.json();
+  } catch {}
+
+  const stageLabel = { novo:'Novo', contato:'Contato', visita:'Visita', proposta:'Proposta', parou:'Parou', fechado:'Fechado', perdido:'Perdido' };
+  const opcoesLeads = leads.length
+    ? leads.map(l => `<option value="${l.id}">${l.nome||'Sem nome'}${l.empreendimento?' · '+l.empreendimento:''} (${stageLabel[l.stage]||l.stage})</option>`).join('')
+    : '<option disabled>Nenhum lead encontrado</option>';
+
   overlay.innerHTML = `
     <div style="background:var(--creme);border-radius:4px;padding:2rem;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
       <div style="font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--verde);margin-bottom:1.2rem">Links gerados</div>
@@ -352,17 +365,56 @@ function mostrarModal(linkCliente, linkResultado) {
           <button onclick="copiar('inp-cliente',this)" style="padding:.5rem .9rem;background:var(--verde);color:var(--creme);border:none;border-radius:3px;font-size:.75rem;cursor:pointer;white-space:nowrap">Copiar</button>
         </div>
       </div>
-      <div style="margin-bottom:1.5rem">
+      <div style="margin-bottom:1.2rem">
         <div style="font-size:.72rem;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">📊 Link do resultado (só para você)</div>
         <div style="display:flex;gap:.5rem;align-items:center">
           <input id="inp-resultado" readonly value="${linkResultado}" style="flex:1;padding:.5rem .7rem;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;background:#fff">
           <button onclick="copiar('inp-resultado',this)" style="padding:.5rem .9rem;background:var(--cobre);color:#fff;border:none;border-radius:3px;font-size:.75rem;cursor:pointer;white-space:nowrap">Copiar</button>
         </div>
       </div>
-      <button onclick="this.closest('div[style]').remove()" style="width:100%;padding:.6rem;background:transparent;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;cursor:pointer;color:var(--suave)">Fechar</button>
+      <div style="border-top:1.5px solid var(--borda);padding-top:1.2rem;margin-bottom:1.2rem">
+        <div style="font-size:.72rem;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">🔗 Vincular a um lead no CRM</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <select id="sel-lead" style="flex:1;padding:.5rem .7rem;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;background:#fff;color:#333">
+            <option value="">Selecionar lead...</option>
+            ${opcoesLeads}
+          </select>
+          <button id="btn-vincular" onclick="vincularLead('${apresentacaoId}',this)" style="padding:.5rem .9rem;background:var(--verde);color:var(--creme);border:none;border-radius:3px;font-size:.75rem;cursor:pointer;white-space:nowrap">Vincular</button>
+        </div>
+        <div id="msg-vincular" style="font-size:.75rem;margin-top:.4rem;min-height:1rem"></div>
+      </div>
+      <button onclick="this.closest('[data-modal]').remove()" style="width:100%;padding:.6rem;background:transparent;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;cursor:pointer;color:var(--suave)">Fechar</button>
     </div>`;
+  overlay.setAttribute('data-modal','');
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function vincularLead(apresentacaoId, btn) {
+  const leadId = document.getElementById('sel-lead').value;
+  const msg = document.getElementById('msg-vincular');
+  if (!leadId) { msg.style.color = 'var(--cobre)'; msg.textContent = 'Selecione um lead primeiro.'; return; }
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const r = await fetch(`${BACKEND}/api/vincular`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leadId: Number(leadId), apresentacaoId }),
+    });
+    if (r.ok) {
+      msg.style.color = 'var(--verde)';
+      msg.textContent = '✓ Vinculado com sucesso!';
+      btn.textContent = '✓';
+    } else {
+      throw new Error('Erro do servidor');
+    }
+  } catch {
+    msg.style.color = 'var(--cobre)';
+    msg.textContent = 'Erro ao vincular. Tente novamente.';
+    btn.disabled = false;
+    btn.textContent = 'Vincular';
+  }
 }
 
 function copiar(inputId, btn) {
