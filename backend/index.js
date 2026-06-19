@@ -102,7 +102,7 @@ function paginaErro(msg) {
 }
 
 function paginaResultado(imoveis, votos, id) {
-  const ok = imoveis.filter(i => i.ok).map((i, idx) => ({ ...i.dados, idx }));
+  const ok = imoveis.map((i, idx) => i.ok ? { ...i.dados, idx } : null).filter(Boolean);
   const curtidos = ok.filter(d => votos && votos[d.idx] === 'like');
   const nao = ok.filter(d => votos && votos[d.idx] === 'dislike');
   const sem = ok.filter(d => !votos || (!votos[d.idx]));
