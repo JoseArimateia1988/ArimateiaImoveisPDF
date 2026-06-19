@@ -1,0 +1,12 @@
+{
+  "name": "arimateia-imoveis-pdf",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/index.js",
+    "postinstall": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
