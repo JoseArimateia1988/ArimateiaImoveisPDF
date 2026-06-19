@@ -11,8 +11,46 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Armazenamento temporário de apresentações (memória)
-const apresentacoes = new Map();
+// Supabase
+const SUPA_URL = process.env.SUPABASE_URL;
+const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+function supa(path, opts = {}) {
+  if (!SUPA_URL || !SUPA_KEY) throw new Error('Supabase não configurado');
+  return fetch(`${SUPA_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY,
+      'Authorization': `Bearer ${SUPA_KEY}`,
+      'Prefer': 'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
+}
+
+async function dbSalvar(id, imoveis) {
+  const r = await supa('apresentacoes', {
+    method: 'POST',
+    body: JSON.stringify({ id, imoveis, votos: null }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+async function dbBuscar(id) {
+  const r = await supa(`apresentacoes?id=eq.${id}`);
+  if (!r.ok) return null;
+  const data = await r.json();
+  return data[0] || null;
+}
+
+async function dbVotar(id, votos) {
+  const r = await supa(`apresentacoes?id=eq.${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ votos }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
 
 app.use(cors());
 app.use(express.json());
@@ -84,37 +122,49 @@ app.post('/api/claude-proxy', async (req, res) => {
   }
 });
 
-app.post('/api/salvar', (req, res) => {
+app.post('/api/salvar', async (req, res) => {
   const { imoveis } = req.body;
   if (!Array.isArray(imoveis)) return res.status(400).json({ erro: 'Dados inválidos' });
   const id = randomUUID().slice(0, 8);
-  apresentacoes.set(id, { imoveis, votos: null });
-  if (apresentacoes.size > 50) {
-    const primeira = apresentacoes.keys().next().value;
-    apresentacoes.delete(primeira);
+  try {
+    await dbSalvar(id, imoveis);
+    res.json({ id });
+  } catch (e) {
+    console.error('Erro ao salvar apresentação:', e.message);
+    res.status(500).json({ erro: 'Erro ao salvar apresentação.' });
   }
-  res.json({ id });
 });
 
-app.get('/ver/:id', (req, res) => {
-  const entrada = apresentacoes.get(req.params.id);
-  if (!entrada) return res.status(404).send(paginaErro('Apresentação não encontrada ou expirada.'));
-  res.send(paginaVisualizacao(entrada.imoveis, req.params.id, !!entrada.votos));
+app.get('/ver/:id', async (req, res) => {
+  try {
+    const entrada = await dbBuscar(req.params.id);
+    if (!entrada) return res.status(404).send(paginaErro('Apresentação não encontrada ou expirada.'));
+    res.send(paginaVisualizacao(entrada.imoveis, req.params.id, !!entrada.votos, entrada.votos));
+  } catch (e) {
+    res.status(500).send(paginaErro('Erro ao carregar apresentação.'));
+  }
 });
 
-app.post('/api/votar/:id', (req, res) => {
-  const entrada = apresentacoes.get(req.params.id);
-  if (!entrada) return res.status(404).json({ erro: 'Não encontrada' });
+app.post('/api/votar/:id', async (req, res) => {
   const { votos } = req.body;
   if (!votos || typeof votos !== 'object') return res.status(400).json({ erro: 'Votos inválidos' });
-  entrada.votos = votos;
-  res.json({ ok: true });
+  try {
+    await dbVotar(req.params.id, votos);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Erro ao salvar votos:', e.message);
+    res.status(500).json({ erro: 'Erro ao salvar votos.' });
+  }
 });
 
-app.get('/resultado/:id', (req, res) => {
-  const entrada = apresentacoes.get(req.params.id);
-  if (!entrada) return res.status(404).send(paginaErro('Resultado não encontrado ou expirado.'));
-  res.send(paginaResultado(entrada.imoveis, entrada.votos, req.params.id));
+app.get('/resultado/:id', async (req, res) => {
+  try {
+    const entrada = await dbBuscar(req.params.id);
+    if (!entrada) return res.status(404).send(paginaErro('Resultado não encontrado ou expirado.'));
+    res.send(paginaResultado(entrada.imoveis, entrada.votos, req.params.id));
+  } catch (e) {
+    res.status(500).send(paginaErro('Erro ao carregar resultado.'));
+  }
 });
 
 app.get('/debug-env', (_, res) => {
@@ -190,7 +240,7 @@ function paginaResultado(imoveis, votos, id) {
 </body></html>`;
 }
 
-function paginaVisualizacao(imoveis, id, jaVotou) {
+function paginaVisualizacao(imoveis, id, jaVotou, votosSalvos) {
   const json = JSON.stringify(imoveis).replace(/<\/script>/gi, '<\\/script>');
   const idSafe = JSON.stringify(id);
   return `<!DOCTYPE html>
@@ -273,7 +323,7 @@ ${jaVotou
 <script>
 const APID = ${idSafe};
 const JA_VOTOU = ${jaVotou};
-const VOTOS_SALVOS = ${jaVotou ? JSON.stringify(apresentacoes.get(id)?.votos ?? {}) : '{}'};
+const VOTOS_SALVOS = ${jaVotou ? JSON.stringify(votosSalvos ?? {}) : '{}'};
 const imoveis = ${json};
 function esc(s){ if(s==null)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderizar(){
