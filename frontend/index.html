@@ -210,8 +210,20 @@
 </head>
 <body>
 
+<!-- TELA LOGIN -->
+<div id="tela-login" style="display:none;min-height:100vh;align-items:center;justify-content:center;background:#d8d4cc;">
+  <div style="background:var(--creme);border-radius:4px;padding:2.5rem;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.15);text-align:center">
+    <div style="font-size:1.1rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--verde);margin-bottom:.3rem">Arimateia Imóveis</div>
+    <div style="width:40px;height:2px;background:var(--cobre);margin:.6rem auto 1.5rem"></div>
+    <input id="login-senha" type="password" placeholder="Senha" onkeydown="if(event.key==='Enter')tentarLogin()"
+      style="width:100%;border:1.5px solid var(--borda);border-radius:3px;padding:.7rem 1rem;font-size:.95rem;font-family:inherit;margin-bottom:.5rem;outline:none"/>
+    <div id="login-erro" style="color:#c0392b;font-size:.8rem;margin-bottom:.5rem;display:none">Senha incorreta.</div>
+    <button onclick="tentarLogin()" style="width:100%;background:var(--verde);color:var(--creme);border:none;padding:.75rem;border-radius:3px;font-size:.85rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer">Entrar</button>
+  </div>
+</div>
+
 <!-- TELA 1: ENTRADA -->
-<div id="tela-entrada">
+<div id="tela-entrada" style="display:none">
   <div class="card-entrada">
     <div class="logo-entrada">
       <div class="nome">Arimateia Imóveis</div>
@@ -241,6 +253,27 @@
 <script>
 const BACKEND = '';
 let imoveisAtual = [];
+
+// ── LOGIN ──
+const SENHA_PDF = "t3teiA";
+function tentarLogin(){
+  const val = document.getElementById("login-senha").value;
+  if(val === SENHA_PDF){
+    localStorage.setItem("pdf_auth","1");
+    document.getElementById("tela-login").style.display="none";
+    document.getElementById("tela-entrada").style.display="flex";
+  } else {
+    document.getElementById("login-erro").style.display="block";
+    document.getElementById("login-senha").value="";
+  }
+}
+if(localStorage.getItem("pdf_auth")==="1"){
+  document.getElementById("tela-entrada").style.display="flex";
+} else {
+  document.getElementById("tela-login").style.display="flex";
+  document.getElementById("tela-entrada").style.display="none";
+  setTimeout(()=>document.getElementById("login-senha").focus(),100);
+}
 
 document.getElementById('btn-gerar').addEventListener('click', async () => {
   const raw = document.getElementById('campo-urls').value.trim();
