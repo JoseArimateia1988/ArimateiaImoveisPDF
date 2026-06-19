@@ -230,14 +230,17 @@ function paginaVisualizacao(imoveis, id, jaVotou) {
 </style>
 </head>
 <body>
-${jaVotou ? '<div class="confirmacao"><h2>✓ Avaliação enviada</h2><p>Obrigado! A corretora já recebeu seu feedback.</p></div>' : `
 <div id="documento"></div>
-<div class="barra-enviar" id="barra-enviar">
+${jaVotou
+  ? '<div class="barra-enviar" style="justify-content:center"><p>✓ Avaliação já enviada — obrigado!</p></div>'
+  : `<div class="barra-enviar" id="barra-enviar">
   <p>Avalie cada imóvel e clique em enviar quando terminar.</p>
   <button class="btn-enviar" id="btn-enviar" onclick="enviarVotos()">Enviar Avaliação</button>
 </div>`}
 <script>
 const APID = ${idSafe};
+const JA_VOTOU = ${jaVotou};
+const VOTOS_SALVOS = ${jaVotou ? JSON.stringify(apresentacoes.get(id)?.votos ?? {}) : '{}'};
 const imoveis = ${json};
 function esc(s){ if(s==null)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderizar(){
@@ -270,9 +273,13 @@ function renderizar(){
     // Botões de avaliação
     const avalBar = document.createElement('div');
     avalBar.className = 'avaliacao-bar';
+    const votoSalvo = JA_VOTOU ? (VOTOS_SALVOS[idx] || '') : '';
+    const disabled = JA_VOTOU ? 'disabled style="cursor:default;opacity:.7"' : '';
+    const likeAtivo = votoSalvo==='like' ? ' ativo' : '';
+    const dislikeAtivo = votoSalvo==='dislike' ? ' ativo' : '';
     avalBar.innerHTML = '<span>Avaliar:</span>'
-      +'<button class="btn-voto like" data-idx="'+idx+'" onclick="votar('+idx+',\\'like\\',this)">👍</button>'
-      +'<button class="btn-voto dislike" data-idx="'+idx+'" onclick="votar('+idx+',\\'dislike\\',this)">👎</button>';
+      +'<button class="btn-voto like'+likeAtivo+'" '+disabled+' onclick="votar('+idx+',\\'like\\',this)">👍</button>'
+      +'<button class="btn-voto dislike'+dislikeAtivo+'" '+disabled+' onclick="votar('+idx+',\\'dislike\\',this)">👎</button>';
     el.appendChild(avalBar);
 
     doc.appendChild(el);
@@ -281,6 +288,7 @@ function renderizar(){
 
 const votos = {};
 function votar(idx, tipo, btn) {
+  if (JA_VOTOU) return;
   const bar = btn.closest('.avaliacao-bar');
   bar.querySelectorAll('.btn-voto').forEach(b => b.classList.remove('ativo'));
   if (votos[idx] === tipo) { delete votos[idx]; }
