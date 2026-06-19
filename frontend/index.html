@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arimateia Imóveis – Apresentação</title>
+<style>
+  :root {
+    --verde:  #243b2a;
+    --cobre:  #7a4f2d;
+    --creme:  #ede8df;
+    --texto:  #1a1a1a;
+    --suave:  #6b6b5e;
+    --borda:  #ccc5b8;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #d8d4cc; color: var(--texto); }
+
+  /* ── ENTRADA ── */
+  #tela-entrada {
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center; padding: 2rem;
+  }
+  .card-entrada {
+    background: var(--creme); border-radius: 4px; padding: 2.5rem;
+    width: 100%; max-width: 600px; box-shadow: 0 4px 24px rgba(0,0,0,.15);
+  }
+  .logo-entrada { margin-bottom: 1.5rem; }
+  .logo-entrada .nome {
+    font-size: 1.4rem; font-weight: 800; color: var(--verde);
+    letter-spacing: .12em; text-transform: uppercase;
+  }
+  .logo-entrada .sep { width: 40px; height: 2px; background: var(--cobre); margin: .5rem 0; }
+  .logo-entrada .slogan { font-size: .78rem; color: var(--suave); letter-spacing: .05em; text-transform: uppercase; }
+  .card-entrada p { color: var(--suave); font-size: .9rem; margin-bottom: 1.2rem; }
+  textarea {
+    width: 100%; height: 150px; padding: .85rem 1rem;
+    border: 1.5px solid var(--borda); border-radius: 4px; background: #fff;
+    font-size: .95rem; resize: vertical; line-height: 1.6; transition: border-color .2s;
+  }
+  textarea:focus { outline: none; border-color: var(--verde); }
+  .btn-primario {
+    margin-top: 1rem; width: 100%; padding: .9rem;
+    background: var(--verde); color: var(--creme); border: none;
+    border-radius: 4px; font-size: .9rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: background .2s;
+  }
+  .btn-primario:hover { background: #1a2e1f; }
+  .btn-primario:disabled { background: #888; cursor: not-allowed; }
+  .status-msg { margin-top: .9rem; font-size: .85rem; color: var(--suave); text-align: center; min-height: 1.2rem; }
+  .status-msg.erro { color: #c0392b; }
+
+  /* ── RESULTADO ── */
+  #tela-resultado { display: none; }
+  .barra-topo {
+    background: var(--verde); color: var(--creme);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .85rem 2rem; position: sticky; top: 0; z-index: 100;
+  }
+  .barra-topo h2 { font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
+  .barra-acoes { display: flex; gap: .6rem; }
+  .btn-barra {
+    padding: .45rem 1rem; border-radius: 3px;
+    border: 1px solid rgba(237,232,223,.4);
+    background: transparent; color: var(--creme); font-size: .78rem;
+    letter-spacing: .06em; text-transform: uppercase; cursor: pointer; transition: background .15s;
+  }
+  .btn-barra:hover { background: rgba(237,232,223,.12); }
+  .btn-barra.destaque { background: var(--cobre); border-color: var(--cobre); font-weight: 700; }
+  .btn-barra.destaque:hover { background: #663f23; }
+
+  /* ── DOCUMENTO ── */
+  #documento { max-width: 860px; margin: 2rem auto 5rem; padding: 0 1rem; }
+
+  /* CAPA */
+  .capa {
+    background: var(--verde); color: var(--creme);
+    padding: .8rem 2rem; margin-bottom: 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 3px solid var(--cobre);
+  }
+  .capa h1 { font-size: 1.1rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .capa-data { font-size: .75rem; opacity: .6; letter-spacing: .06em; text-transform: uppercase; }
+
+  /* CARD */
+  .imovel-card {
+    background: var(--creme); margin-bottom: 2rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,.12); page-break-after: always;
+  }
+
+  /* Galeria — grid uniforme 3 colunas, todas as fotos */
+  .galeria-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .galeria-grid img {
+    width: 100%; height: 200px; object-fit: cover; display: block;
+  }
+  .galeria-vazia {
+    height: 200px; background: #2a2a2a;
+    display: flex; align-items: center; justify-content: center;
+    color: #777; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase;
+  }
+
+  /* Cabeçalho verde do card */
+  .card-header {
+    background: var(--verde); color: var(--creme);
+    padding: 1.4rem 2rem;
+  }
+  .card-header-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: .5rem;
+  }
+  .card-breadcrumb {
+    font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--cobre); font-weight: 600;
+  }
+  .card-ref { font-size: .7rem; letter-spacing: .1em; color: var(--cobre); font-weight: 600; }
+  .card-ref-destaque {
+    font-size: .75rem; font-weight: 700; letter-spacing: .14em;
+    color: var(--cobre); text-transform: uppercase; margin-bottom: .3rem;
+  }
+  .card-titulo {
+    font-size: 1.5rem; font-weight: 800; letter-spacing: .01em;
+    text-transform: uppercase; margin-top: .3rem; line-height: 1.2;
+  }
+  .card-endereco {
+    margin-top: .4rem; font-size: .85rem; opacity: .75;
+  }
+  .card-endereco a { color: var(--creme); opacity: .75; text-decoration: underline; text-underline-offset: 3px; }
+  .card-endereco a:hover { opacity: 1; }
+
+  /* Fichas */
+  .fichas-wrapper {
+    background: var(--creme); padding: 1.6rem 2rem;
+    border-bottom: 1px solid var(--cobre);
+  }
+  .fichas {
+    display: flex; gap: 0;
+  }
+  .ficha {
+    flex: 1; padding: .6rem 1.5rem;
+    border-right: 1px solid var(--borda);
+  }
+  .ficha:first-child { padding-left: 0; }
+  .ficha:last-child { border-right: none; }
+  .ficha-v { font-size: 1.4rem; font-weight: 800; color: var(--texto); line-height: 1; }
+  .ficha-l { font-size: .65rem; color: var(--suave); margin-top: .35rem; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* Preço */
+  .preco-wrapper {
+    background: var(--creme); padding: 1.2rem 2rem 1.4rem;
+    border-bottom: 1.5px solid var(--cobre);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  }
+  .preco-valor { font-size: 2rem; font-weight: 800; color: var(--cobre); line-height: 1; }
+  .preco-extras { font-size: .8rem; color: var(--suave); text-align: right; line-height: 1.6; }
+
+  /* Detalhes */
+  .detalhes-wrapper { padding: 1.4rem 2rem; }
+  .detalhes-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1rem 2rem; margin-bottom: 1.2rem;
+  }
+  .detalhe-item .dl { font-size: .65rem; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .2rem; }
+  .detalhe-item .dv { font-size: .95rem; font-weight: 600; color: var(--texto); }
+
+  .descricao { font-size: .88rem; line-height: 1.75; color: #444; margin-bottom: 1.2rem; border-top: 1px solid var(--borda); padding-top: 1.2rem; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .tag {
+    border: 1px solid var(--borda); color: var(--suave);
+    font-size: .72rem; padding: .25rem .7rem; border-radius: 2px;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+
+  .card-rodape {
+    background: var(--verde); color: var(--creme);
+    padding: .65rem 2rem; display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-rodape .marca { font-size: .7rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .card-rodape a { font-size: .68rem; color: rgba(237,232,223,.6); text-decoration: none; letter-spacing: .04em; }
+  .card-rodape a:hover { color: var(--cobre); }
+
+  /* Separador entre imóveis */
+  .separador {
+    height: 6px;
+    background: var(--verde);
+    margin: 2rem 0;
+  }
+
+  /* Erro */
+  .imovel-erro {
+    background: #fff5f5; border-left: 3px solid #dc2626;
+    padding: 1.2rem 1.5rem; margin-bottom: 2rem; font-size: .88rem; color: #dc2626;
+  }
+
+  /* PRINT */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: #fff; }
+    .barra-topo { display: none; }
+    #documento { max-width: 100%; margin: 0; padding: 0; }
+    .imovel-card { box-shadow: none; margin: 0; }
+    .imovel-card { margin-bottom: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TELA 1: ENTRADA -->
+<div id="tela-entrada">
+  <div class="card-entrada">
+    <div class="logo-entrada">
+      <div class="nome">Arimateia Imóveis</div>
+      <div class="sep"></div>
+      <div class="slogan">Gerador de Apresentação</div>
+    </div>
+    <p>Cole um ou mais links da Lopes.com.br (um por linha) e gere uma apresentação profissional em PDF.</p>
+    <textarea id="campo-urls" placeholder="https://www.lopes.com.br/imovel/...&#10;https://www.lopes.com.br/imovel/..."></textarea>
+    <button class="btn-primario" id="btn-gerar">Gerar Apresentação</button>
+    <p class="status-msg" id="status"></p>
+  </div>
+</div>
+
+<!-- TELA 2: RESULTADO -->
+<div id="tela-resultado">
+  <div class="barra-topo">
+    <h2>Arimateia Imóveis — Apresentação</h2>
+    <div class="barra-acoes">
+      <button class="btn-barra" onclick="voltarInicio()">← Novo</button>
+      <button class="btn-barra destaque" onclick="window.print()">⬇ Baixar PDF</button>
+    </div>
+  </div>
+  <div id="documento"></div>
+</div>
+
+<script>
+const BACKEND = '';
+
+document.getElementById('btn-gerar').addEventListener('click', async () => {
+  const raw = document.getElementById('campo-urls').value.trim();
+  const urls = raw.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
+  if (!urls.length) { setStatus('Cole pelo menos um link válido.', true); return; }
+
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = true;
+  setStatus(`Buscando ${urls.length} imóvel(is)... aguarde alguns segundos.`);
+
+  try {
+    const resp = await fetch(`${BACKEND}/api/extrair`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls }),
+    });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro || 'Erro no servidor'); }
+    const { imoveis } = await resp.json();
+    renderizar(imoveis);
+    mostrarTela('resultado');
+  } catch (e) {
+    setStatus(e.message || 'Erro ao conectar com o servidor.', true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function setStatus(msg, erro = false) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status-msg' + (erro ? ' erro' : '');
+}
+
+function mostrarTela(nome) {
+  document.getElementById('tela-entrada').style.display   = nome === 'entrada'   ? 'flex'  : 'none';
+  document.getElementById('tela-resultado').style.display = nome === 'resultado' ? 'block' : 'none';
+}
+
+function voltarInicio() { mostrarTela('entrada'); setStatus(''); }
+
+function renderizar(imoveis) {
+  const ok = imoveis.filter(i => i.ok).map(i => i.dados);
+  const doc = document.getElementById('documento');
+  doc.innerHTML = '';
+
+  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const subtitulo = ok.length > 1 ? `${ok.length} Imóveis Selecionados` : '';
+  doc.innerHTML = `
+    <div class="capa">
+      <h1>Arimateia Imóveis</h1>
+      <div class="capa-data">${hoje}${subtitulo ? ' · ' + esc(subtitulo) : ''}</div>
+    </div>`;
+
+  imoveis.forEach((item, i) => {
+    if (i > 0) {
+      const sep = document.createElement('div');
+      sep.className = 'separador';
+      doc.appendChild(sep);
+    }
+    if (!item.ok) {
+      doc.innerHTML += `<div class="imovel-erro"><strong>Não foi possível extrair dados</strong><br>${esc(item.url)}<br><small>${esc(item.erro)}</small></div>`;
+      return;
+    }
+    doc.appendChild(card(item.dados));
+  });
+}
+
+function card(d) {
+  const el = document.createElement('div');
+  el.className = 'imovel-card';
+
+  // Galeria — todas as fotos
+  const fotos = (d.fotos || []).filter(Boolean);
+  let gal;
+  if (!fotos.length) {
+    gal = `<div class="galeria-vazia">Fotos não disponíveis</div>`;
+  } else {
+    const imgs = fotos.map(s =>
+      `<img src="${esc(s)}" loading="lazy" onerror="this.style.display='none'">`
+    ).join('');
+    gal = `<div class="galeria-grid">${imgs}</div>`;
+  }
+
+  // Cabeçalho do card
+  const breadcrumb = [d.bairro, d.cidade, d.preco_venda ? 'Venda' : d.preco_aluguel ? 'Locação' : null].filter(Boolean).join(' · ');
+  const mapsUrl = d.endereco ? `https://maps.google.com/?q=${encodeURIComponent((d.endereco||'') + (d.cidade ? ', '+d.cidade : ''))}` : null;
+  const enderecoHtml = d.endereco
+    ? (mapsUrl ? `<a href="${esc(mapsUrl)}" target="_blank">📍 ${esc(d.endereco)}</a>` : `📍 ${esc(d.endereco)}`)
+    : '';
+  const refHtml = d.codigo ? `<div class="card-ref-destaque">${esc(d.codigo)}</div>` : '';
+
+  // Fichas principais
+  const fichasDef = [
+    d.area_total  ? { v: d.area_total,   l: 'Área Total'   } : d.area_util ? { v: d.area_util, l: 'Área Útil' } : null,
+    d.quartos  != null ? { v: d.quartos,  l: 'Dormitórios'  } : null,
+    d.vagas    != null ? { v: d.vagas,    l: 'Vagas'        } : null,
+    d.banheiros != null ? { v: d.banheiros, l: 'Banheiros'  } : null,
+  ].filter(Boolean);
+
+  const fichasHtml = fichasDef.length ? `
+    <div class="fichas-wrapper">
+      <div class="fichas">
+        ${fichasDef.map(f => `<div class="ficha"><div class="ficha-v">${esc(String(f.v))}</div><div class="ficha-l">${esc(f.l)}</div></div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Preço
+  const preco = d.preco_venda || d.preco_aluguel || null;
+  const extras = [
+    d.condominio ? `Condomínio: ${d.condominio}` : null,
+    d.iptu ? `IPTU: ${d.iptu}` : null,
+  ].filter(Boolean).join('<br>');
+  const precoHtml = preco ? `
+    <div class="preco-wrapper">
+      <div class="preco-valor">${esc(preco)}</div>
+      ${extras ? `<div class="preco-extras">${extras}</div>` : ''}
+    </div>` : '';
+
+  // Detalhes secundários
+  const detsDef = [
+    d.area_util && d.area_total ? { l: 'Área Útil',   v: d.area_util   } : null,
+    d.suites    != null         ? { l: 'Suítes',      v: d.suites      } : null,
+    d.andar                     ? { l: 'Andar',       v: d.andar       } : null,
+    d.condominio                ? { l: 'Condomínio',  v: d.condominio  } : null,
+    d.iptu                      ? { l: 'IPTU',        v: d.iptu        } : null,
+  ].filter(Boolean);
+
+  const detsHtml = detsDef.length ? `
+    <div class="detalhes-grid">
+      ${detsDef.map(d => `<div class="detalhe-item"><div class="dl">${esc(d.l)}</div><div class="dv">${esc(String(d.v))}</div></div>`).join('')}
+    </div>` : '';
+
+  const tags = (d.caracteristicas || []).slice(0, 16)
+    .map(t => `<span class="tag">${esc(t)}</span>`).join('');
+
+  el.innerHTML = `
+    <div class="card-header">
+      <div class="card-header-top">
+        ${breadcrumb ? `<div class="card-breadcrumb">${esc(breadcrumb)}</div>` : '<div></div>'}
+      </div>
+      ${refHtml}
+      <div class="card-titulo">${esc(d.titulo || 'Imóvel')}</div>
+      ${enderecoHtml ? `<div class="card-endereco">${enderecoHtml}</div>` : ''}
+    </div>
+    ${fichasHtml}
+    ${precoHtml}
+    ${gal}
+    <div class="detalhes-wrapper">
+      ${detsHtml}
+      ${d.descricao ? `<p class="descricao">${esc(d.descricao)}</p>` : ''}
+      ${tags ? `<div class="tags">${tags}</div>` : ''}
+    </div>
+    <div class="card-rodape">
+      <span class="marca">Arimateia Imóveis</span>
+      ${d.url_origem ? `<a href="${esc(d.url_origem)}" target="_blank">Ver anúncio original</a>` : ''}
+    </div>`;
+
+  return el;
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
