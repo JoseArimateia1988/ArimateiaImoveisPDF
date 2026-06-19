@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic();
+const apiKey = (process.env.ANTHROPIC_API_KEY || '').replace(/\s+/g, '');
+const client = new Anthropic({ apiKey });
 
 const PROMPT = (text, url) => `Você é um assistente especializado em extrair dados de imóveis de páginas web brasileiras.
 Extraia SOMENTE o que estiver explicitamente na página. Se um campo não existir, use null.
