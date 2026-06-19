@@ -231,6 +231,7 @@
     <h2>Arimateia Imóveis — Apresentação</h2>
     <div class="barra-acoes">
       <button class="btn-barra" onclick="voltarInicio()">← Novo</button>
+      <button class="btn-barra" id="btn-link" onclick="gerarLink()">🔗 Compartilhar</button>
       <button class="btn-barra destaque" onclick="window.print()">⬇ Baixar PDF</button>
     </div>
   </div>
@@ -239,6 +240,7 @@
 
 <script>
 const BACKEND = '';
+let imoveisAtual = [];
 
 document.getElementById('btn-gerar').addEventListener('click', async () => {
   const raw = document.getElementById('campo-urls').value.trim();
@@ -257,6 +259,7 @@ document.getElementById('btn-gerar').addEventListener('click', async () => {
     });
     if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro || 'Erro no servidor'); }
     const { imoveis } = await resp.json();
+    imoveisAtual = imoveis;
     renderizar(imoveis);
     mostrarTela('resultado');
   } catch (e) {
@@ -278,6 +281,28 @@ function mostrarTela(nome) {
 }
 
 function voltarInicio() { mostrarTela('entrada'); setStatus(''); }
+
+async function gerarLink() {
+  const btn = document.getElementById('btn-link');
+  btn.textContent = 'Gerando...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`${BACKEND}/api/salvar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imoveis: imoveisAtual }),
+    });
+    const { id } = await resp.json();
+    const url = `${window.location.origin}/ver/${id}`;
+    await navigator.clipboard.writeText(url);
+    btn.textContent = '✓ Link copiado!';
+    setTimeout(() => { btn.textContent = '🔗 Compartilhar'; btn.disabled = false; }, 3000);
+  } catch {
+    btn.textContent = '🔗 Compartilhar';
+    btn.disabled = false;
+    alert('Erro ao gerar link.');
+  }
+}
 
 function renderizar(imoveis) {
   const ok = imoveis.filter(i => i.ok).map(i => i.dados);
