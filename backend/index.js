@@ -55,8 +55,7 @@ app.post('/api/salvar', (req, res) => {
   const { imoveis } = req.body;
   if (!Array.isArray(imoveis)) return res.status(400).json({ erro: 'Dados inválidos' });
   const id = randomUUID().slice(0, 8);
-  apresentacoes.set(id, imoveis);
-  // Limpa entradas antigas (máx 50)
+  apresentacoes.set(id, { imoveis, votos: null });
   if (apresentacoes.size > 50) {
     const primeira = apresentacoes.keys().next().value;
     apresentacoes.delete(primeira);
@@ -65,9 +64,24 @@ app.post('/api/salvar', (req, res) => {
 });
 
 app.get('/ver/:id', (req, res) => {
-  const dados = apresentacoes.get(req.params.id);
-  if (!dados) return res.status(404).send('<h2>Apresentação não encontrada ou expirada.</h2>');
-  res.send(paginaVisualizacao(dados));
+  const entrada = apresentacoes.get(req.params.id);
+  if (!entrada) return res.status(404).send(paginaErro('Apresentação não encontrada ou expirada.'));
+  res.send(paginaVisualizacao(entrada.imoveis, req.params.id, !!entrada.votos));
+});
+
+app.post('/api/votar/:id', (req, res) => {
+  const entrada = apresentacoes.get(req.params.id);
+  if (!entrada) return res.status(404).json({ erro: 'Não encontrada' });
+  const { votos } = req.body;
+  if (!votos || typeof votos !== 'object') return res.status(400).json({ erro: 'Votos inválidos' });
+  entrada.votos = votos;
+  res.json({ ok: true });
+});
+
+app.get('/resultado/:id', (req, res) => {
+  const entrada = apresentacoes.get(req.params.id);
+  if (!entrada) return res.status(404).send(paginaErro('Resultado não encontrado ou expirado.'));
+  res.send(paginaResultado(entrada.imoveis, entrada.votos, req.params.id));
 });
 
 app.get('/debug-env', (_, res) => {
@@ -80,8 +94,72 @@ app.get('/debug-env', (_, res) => {
   });
 });
 
-function paginaVisualizacao(imoveis) {
+function paginaErro(msg) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Arimateia Imóveis</title>
+  <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#d8d4cc;margin:0;}
+  .box{background:#fff;padding:2rem 3rem;border-radius:4px;text-align:center;color:#555;}</style></head>
+  <body><div class="box"><h2 style="color:#243b2a;margin-bottom:.5rem">Arimateia Imóveis</h2><p>${msg}</p></div></body></html>`;
+}
+
+function paginaResultado(imoveis, votos, id) {
+  const ok = imoveis.filter(i => i.ok).map((i, idx) => ({ ...i.dados, idx }));
+  const curtidos = ok.filter(d => votos && votos[d.idx] === 'like');
+  const nao = ok.filter(d => votos && votos[d.idx] === 'dislike');
+  const sem = ok.filter(d => !votos || (!votos[d.idx]));
+
+  function listaImoveis(lista, cor) {
+    if (!lista.length) return '<p style="color:#999;font-size:.85rem">Nenhum</p>';
+    return lista.map(d => `<div style="border-left:3px solid ${cor};padding:.5rem 1rem;margin-bottom:.5rem;background:#fff;border-radius:2px">
+      <strong style="font-size:.9rem">${d.titulo || 'Imóvel'}</strong><br>
+      <span style="font-size:.78rem;color:#666">${d.endereco || ''}</span>
+      ${d.preco_venda || d.preco_aluguel ? `<span style="float:right;font-weight:700;color:#7a4f2d">${d.preco_venda || d.preco_aluguel}</span>` : ''}
+    </div>`).join('');
+  }
+
+  const aguardando = !votos ? `<div style="background:#fffbe6;border:1px solid #f0c040;padding:.8rem 1.2rem;border-radius:4px;margin-bottom:1.5rem;font-size:.85rem;color:#7a6200">
+    ⏳ O cliente ainda não enviou a avaliação. Recarregue esta página para ver o resultado.
+  </div>` : '';
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resultado – Arimateia Imóveis</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;background:#d8d4cc;margin:0;padding:2rem 1rem;}
+  .container{max-width:680px;margin:0 auto;}
+  .header{background:#243b2a;color:#ede8df;padding:1rem 1.5rem;border-radius:4px 4px 0 0;border-bottom:3px solid #7a4f2d;display:flex;justify-content:space-between;align-items:center;}
+  .header h1{font-size:.95rem;letter-spacing:.1em;text-transform:uppercase;font-weight:800;}
+  .header span{font-size:.72rem;opacity:.6;}
+  .body{background:#ede8df;padding:1.5rem;border-radius:0 0 4px 4px;}
+  .secao{margin-bottom:1.5rem;}
+  .secao h2{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:.7rem;padding-bottom:.3rem;border-bottom:2px solid currentColor;}
+  .verde{color:#243b2a;} .vermelho{color:#c0392b;} .cinza{color:#888;}
+  .btn-reload{background:#243b2a;color:#ede8df;border:none;padding:.5rem 1.2rem;border-radius:3px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;margin-top:.5rem;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header"><h1>Resultado da Avaliação</h1><span>Arimateia Imóveis</span></div>
+  <div class="body">
+    ${aguardando}
+    <div class="secao">
+      <h2 class="verde">👍 Curtiu (${curtidos.length})</h2>
+      ${listaImoveis(curtidos, '#243b2a')}
+    </div>
+    <div class="secao">
+      <h2 class="vermelho">👎 Não curtiu (${nao.length})</h2>
+      ${listaImoveis(nao, '#c0392b')}
+    </div>
+    ${sem.length ? `<div class="secao"><h2 class="cinza">— Sem avaliação (${sem.length})</h2>${listaImoveis(sem, '#ccc')}</div>` : ''}
+    <button class="btn-reload" onclick="location.reload()">↻ Atualizar</button>
+  </div>
+</div>
+</body></html>`;
+}
+
+function paginaVisualizacao(imoveis, id, jaVotou) {
   const json = JSON.stringify(imoveis).replace(/<\/script>/gi, '<\\/script>');
+  const idSafe = JSON.stringify(id);
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -129,6 +207,20 @@ function paginaVisualizacao(imoveis) {
   .card-rodape a { font-size:.68rem; color:rgba(237,232,223,.6); text-decoration:none; letter-spacing:.04em; }
   .separador { height:6px; background:var(--verde); margin:2rem 0; }
   .imovel-erro { background:#fff5f5; border-left:3px solid #dc2626; padding:1.2rem 1.5rem; margin-bottom:2rem; font-size:.88rem; color:#dc2626; }
+  /* Avaliação */
+  .avaliacao-bar { display:flex; gap:.6rem; padding:1rem 2rem; background:#f5f0e8; border-top:1px solid var(--borda); align-items:center; }
+  .avaliacao-bar span { font-size:.78rem; color:var(--suave); letter-spacing:.05em; text-transform:uppercase; margin-right:.4rem; }
+  .btn-voto { padding:.45rem 1.2rem; border-radius:3px; border:1.5px solid var(--borda); background:#fff; font-size:1rem; cursor:pointer; transition:all .15s; }
+  .btn-voto:hover { border-color:var(--verde); }
+  .btn-voto.like.ativo { background:#243b2a; border-color:#243b2a; }
+  .btn-voto.dislike.ativo { background:#c0392b; border-color:#c0392b; }
+  .barra-enviar { position:fixed; bottom:0; left:0; right:0; background:var(--verde); padding:.9rem 2rem; display:flex; align-items:center; justify-content:space-between; z-index:200; }
+  .barra-enviar p { color:var(--creme); font-size:.82rem; letter-spacing:.04em; }
+  .btn-enviar { background:var(--cobre); color:#fff; border:none; padding:.6rem 1.6rem; border-radius:3px; font-size:.82rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
+  .btn-enviar:disabled { background:#888; cursor:not-allowed; }
+  .confirmacao { text-align:center; padding:3rem 2rem; }
+  .confirmacao h2 { color:var(--verde); font-size:1.3rem; margin-bottom:.5rem; }
+  .confirmacao p { color:var(--suave); font-size:.9rem; }
   @media print {
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
     body { background:#fff; }
@@ -138,8 +230,14 @@ function paginaVisualizacao(imoveis) {
 </style>
 </head>
 <body>
+${jaVotou ? '<div class="confirmacao"><h2>✓ Avaliação enviada</h2><p>Obrigado! A corretora já recebeu seu feedback.</p></div>' : `
 <div id="documento"></div>
+<div class="barra-enviar" id="barra-enviar">
+  <p>Avalie cada imóvel e clique em enviar quando terminar.</p>
+  <button class="btn-enviar" id="btn-enviar" onclick="enviarVotos()">Enviar Avaliação</button>
+</div>`}
 <script>
+const APID = ${idSafe};
 const imoveis = ${json};
 function esc(s){ if(s==null)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderizar(){
@@ -147,7 +245,8 @@ function renderizar(){
   const doc=document.getElementById('documento');
   const hoje=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
   doc.innerHTML='<div class="capa"><h1>Arimateia Imóveis</h1><div class="capa-data">'+hoje+(ok.length>1?' · '+ok.length+' Imóveis Selecionados':'')+'</div></div>';
-  imoveis.forEach((item,i)=>{
+  imoveis.forEach((item,idx)=>{
+    const i=idx;
     if(i>0){const s=document.createElement('div');s.className='separador';doc.appendChild(s);}
     if(!item.ok){doc.innerHTML+='<div class="imovel-erro"><strong>Não foi possível extrair dados</strong><br>'+esc(item.url)+'<br><small>'+esc(item.erro)+'</small></div>';return;}
     const d=item.dados;
@@ -168,10 +267,37 @@ function renderizar(){
     const el=document.createElement('div');
     el.className='imovel-card';
     el.innerHTML='<div class="card-header"><div class="card-header-top">'+(breadcrumb?'<div class="card-breadcrumb">'+esc(breadcrumb)+'</div>':'<div></div>')+'</div>'+refHtml+'<div class="card-titulo">'+esc(d.titulo||'Imóvel')+'</div>'+(endHtml?'<div class="card-endereco">'+endHtml+'</div>':'')+'</div>'+fichasHtml+precoHtml+gal+'<div class="detalhes-wrapper">'+detsHtml+(d.descricao?'<p class="descricao">'+esc(d.descricao)+'</p>':'')+(tags?'<div class="tags">'+tags+'</div>':'')+'</div><div class="card-rodape"><span class="marca">Arimateia Imóveis</span>'+(d.url_origem?'<a href="'+esc(d.url_origem)+'" target="_blank">Ver anúncio original</a>':'')+'</div>';
+    // Botões de avaliação
+    const avalBar = document.createElement('div');
+    avalBar.className = 'avaliacao-bar';
+    avalBar.innerHTML = '<span>Avaliar:</span>'
+      +'<button class="btn-voto like" data-idx="'+idx+'" onclick="votar('+idx+',\\'like\\',this)">👍</button>'
+      +'<button class="btn-voto dislike" data-idx="'+idx+'" onclick="votar('+idx+',\\'dislike\\',this)">👎</button>';
+    el.appendChild(avalBar);
+
     doc.appendChild(el);
   });
 }
-renderizar();
+
+const votos = {};
+function votar(idx, tipo, btn) {
+  const bar = btn.closest('.avaliacao-bar');
+  bar.querySelectorAll('.btn-voto').forEach(b => b.classList.remove('ativo'));
+  if (votos[idx] === tipo) { delete votos[idx]; }
+  else { votos[idx] = tipo; btn.classList.add('ativo'); }
+}
+
+async function enviarVotos() {
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    await fetch('/api/votar/'+APID, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({votos}) });
+    document.getElementById('documento').innerHTML = '<div class="confirmacao"><h2>✓ Avaliação enviada!</h2><p>Obrigado! A corretora já recebeu seu feedback.</p></div>';
+    document.getElementById('barra-enviar').style.display = 'none';
+  } catch { btn.disabled=false; btn.textContent='Enviar Avaliação'; alert('Erro ao enviar. Tente novamente.'); }
+}
+
+if(document.getElementById('documento')) renderizar();
 </script>
 </body>
 </html>`;

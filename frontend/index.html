@@ -293,15 +293,51 @@ async function gerarLink() {
       body: JSON.stringify({ imoveis: imoveisAtual }),
     });
     const { id } = await resp.json();
-    const url = `${window.location.origin}/ver/${id}`;
-    await navigator.clipboard.writeText(url);
-    btn.textContent = '✓ Link copiado!';
-    setTimeout(() => { btn.textContent = '🔗 Compartilhar'; btn.disabled = false; }, 3000);
+    const linkCliente = `${window.location.origin}/ver/${id}`;
+    const linkResultado = `${window.location.origin}/resultado/${id}`;
+    await navigator.clipboard.writeText(linkCliente);
+    btn.textContent = '🔗 Compartilhar';
+    btn.disabled = false;
+    mostrarModal(linkCliente, linkResultado);
   } catch {
     btn.textContent = '🔗 Compartilhar';
     btn.disabled = false;
     alert('Erro ao gerar link.');
   }
+}
+
+function mostrarModal(linkCliente, linkResultado) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.innerHTML = `
+    <div style="background:var(--creme);border-radius:4px;padding:2rem;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--verde);margin-bottom:1.2rem">Links gerados</div>
+      <div style="margin-bottom:1.2rem">
+        <div style="font-size:.72rem;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">📤 Link para o cliente</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input id="inp-cliente" readonly value="${linkCliente}" style="flex:1;padding:.5rem .7rem;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;background:#fff">
+          <button onclick="copiar('inp-cliente',this)" style="padding:.5rem .9rem;background:var(--verde);color:var(--creme);border:none;border-radius:3px;font-size:.75rem;cursor:pointer;white-space:nowrap">Copiar</button>
+        </div>
+      </div>
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:.72rem;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">📊 Link do resultado (só para você)</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input id="inp-resultado" readonly value="${linkResultado}" style="flex:1;padding:.5rem .7rem;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;background:#fff">
+          <button onclick="copiar('inp-resultado',this)" style="padding:.5rem .9rem;background:var(--cobre);color:#fff;border:none;border-radius:3px;font-size:.75rem;cursor:pointer;white-space:nowrap">Copiar</button>
+        </div>
+      </div>
+      <button onclick="this.closest('div[style]').remove()" style="width:100%;padding:.6rem;background:transparent;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;cursor:pointer;color:var(--suave)">Fechar</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+function copiar(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  inp.select();
+  navigator.clipboard.writeText(inp.value);
+  btn.textContent = '✓ Copiado';
+  setTimeout(() => btn.textContent = 'Copiar', 2000);
 }
 
 function renderizar(imoveis) {
