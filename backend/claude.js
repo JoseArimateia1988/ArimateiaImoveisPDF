@@ -1,8 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const apiKey = (process.env.ANTHROPIC_API_KEY || '').replace(/\s+/g, '');
-const client = new Anthropic({ apiKey });
-
 const PROMPT = (text, url) => `Você é um assistente especializado em extrair dados de imóveis de páginas web brasileiras.
 Extraia SOMENTE o que estiver explicitamente na página. Se um campo não existir, use null.
 Responda APENAS com JSON válido, sem markdown, sem explicações.
@@ -36,6 +33,12 @@ Retorne JSON com EXATAMENTE esta estrutura:
 }`;
 
 export async function extractImovelData(text, url) {
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').replace(/\s/g, '');
+
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada');
+
+  const client = new Anthropic({ apiKey });
+
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
