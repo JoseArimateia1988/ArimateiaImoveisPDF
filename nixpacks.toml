@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "chromium", "nss", "freetype", "harfbuzz", "ca-certificates", "ttf-opensans"]
+
+[phases.install]
+cmds = ["cd backend && npm install"]
+
+[start]
+cmd = "node backend/index.js"
