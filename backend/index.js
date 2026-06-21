@@ -97,10 +97,16 @@ app.post('/api/claude-proxy', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY não configurada.' } });
 
-  const { prompt, maxTokens = 1000 } = req.body;
+  const { prompt, maxTokens = 1000, system, model } = req.body;
   if (!prompt) return res.status(400).json({ error: { message: "Campo 'prompt' ausente." } });
 
   try {
+    const body = {
+      model: model || 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    };
+    if (system) body.system = system;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -108,11 +114,7 @@ app.post('/api/claude-proxy', async (req, res) => {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      body: JSON.stringify(body),
     });
     const data = await response.json();
     if (!response.ok) return res.status(response.status).json({ error: { message: data?.error?.message || 'Erro da API Claude.' } });
