@@ -1,6 +1,5 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { fetchOruloContent } from './scraper-orulo.js';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -55,7 +54,6 @@ function extrairImagens($, url, html) {
 }
 
 export async function fetchPageContent(url) {
-  if (url.includes('orulo.com.br')) return fetchOruloContent(url);
   const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 15000 });
   const $ = cheerio.load(html);
 
