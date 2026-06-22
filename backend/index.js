@@ -56,6 +56,23 @@ async function dbVotar(id, votos) {
 app.use(cors());
 app.use(express.json());
 
+// Proxy de imagens — serve fotos externas com CORS liberado,
+// permitindo redução via canvas no navegador antes de gerar o PDF.
+app.get('/img', async (req, res) => {
+  const u = req.query.u;
+  if (!u || !/^https?:\/\//.test(u)) return res.status(400).end();
+  try {
+    const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' } });
+    if (!r.ok) return res.status(502).end();
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.end(Buffer.from(await r.arrayBuffer()));
+  } catch {
+    res.status(502).end();
+  }
+});
+
 // Serve o frontend PDF
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));

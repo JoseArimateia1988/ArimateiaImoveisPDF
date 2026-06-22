@@ -262,7 +262,7 @@
     <div class="barra-acoes">
       <button class="btn-barra" onclick="voltarInicio()">← Novo</button>
       <button class="btn-barra" id="btn-link" onclick="gerarLink()">🔗 Compartilhar</button>
-      <button class="btn-barra destaque" onclick="window.print()">⬇ Baixar PDF</button>
+      <button class="btn-barra destaque" id="btn-pdf" onclick="baixarPDF()">⬇ Baixar PDF</button>
     </div>
   </div>
   <div id="documento"></div>
@@ -441,6 +441,46 @@ function copiar(inputId, btn) {
   navigator.clipboard.writeText(inp.value);
   btn.textContent = '✓ Copiado';
   setTimeout(() => btn.textContent = 'Copiar', 2000);
+}
+
+// Reduz uma <img> via canvas (max 1000px de largura, JPEG 70%) para um PDF leve.
+function reduzirImg(img) {
+  return new Promise(resolve => {
+    const orig = img.dataset.orig || img.src;
+    img.dataset.orig = orig;
+    if (orig.startsWith('data:')) return resolve();
+    const tmp = new Image();
+    tmp.crossOrigin = 'anonymous';
+    tmp.onload = () => {
+      try {
+        const maxW = 1000;
+        const escala = Math.min(1, maxW / tmp.naturalWidth);
+        const c = document.createElement('canvas');
+        c.width = Math.round(tmp.naturalWidth * escala);
+        c.height = Math.round(tmp.naturalHeight * escala);
+        c.getContext('2d').drawImage(tmp, 0, 0, c.width, c.height);
+        img.src = c.toDataURL('image/jpeg', 0.7);
+      } catch {}
+      resolve();
+    };
+    tmp.onerror = () => resolve();
+    // Passa pelo proxy do backend para liberar CORS e permitir o canvas
+    tmp.src = '/img?u=' + encodeURIComponent(orig);
+  });
+}
+
+async function baixarPDF() {
+  const btn = document.getElementById('btn-pdf');
+  const txt = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Preparando…';
+  try {
+    const imgs = [...document.querySelectorAll('#documento img')];
+    await Promise.all(imgs.map(reduzirImg));
+  } catch {}
+  btn.disabled = false;
+  btn.textContent = txt;
+  window.print();
 }
 
 function renderizar(imoveis) {
