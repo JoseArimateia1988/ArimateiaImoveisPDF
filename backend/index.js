@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { fetchPageContent } from './scraper.js';
 import { extractImovelData } from './claude.js';
+import { isOruloUrl, fetchOruloImovel } from './orulo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -76,6 +77,12 @@ app.post('/api/extrair', async (req, res) => {
 
   const resultados = await Promise.allSettled(
     urls.map(async (url) => {
+      // Órulo: usa a API pública direta (tipologias + fotos), sem IA
+      if (isOruloUrl(url)) {
+        const dados = await fetchOruloImovel(url);
+        return { ...dados, url_origem: url };
+      }
+      // Demais sites: scraping + extração via IA
       const { text, images } = await fetchPageContent(url);
       const dados = await extractImovelData(text, url);
       return { ...dados, fotos: images, url_origem: url };
