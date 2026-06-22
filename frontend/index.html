@@ -141,22 +141,22 @@
     letter-spacing: .1em; font-weight: 700; margin-bottom: .8rem;
   }
   .tipologias-table {
-    width: 100%; border-collapse: collapse; font-size: .82rem;
+    width: 100%; border-collapse: collapse; font-size: .85rem;
   }
   .tipologias-table th {
     text-align: left; font-size: .62rem; color: var(--suave);
     text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
-    padding: .4rem .6rem; border-bottom: 2px solid var(--verde);
+    padding: .45rem .8rem .45rem 0; border-bottom: 1px solid var(--borda);
     white-space: nowrap;
   }
+  .tipologias-table th:not(:first-child) { text-align: center; }
   .tipologias-table td {
-    padding: .55rem .6rem; border-bottom: 1px solid var(--borda);
+    padding: .65rem .8rem .65rem 0; border-bottom: 1px solid var(--borda);
     vertical-align: middle;
   }
+  .tipologias-table td:not(:first-child) { text-align: center; color: var(--suave); }
   .tipologias-table tr:last-child td { border-bottom: none; }
-  .tipologias-table tr:nth-child(even) td { background: rgba(0,0,0,.02); }
-  .td-tipo { font-weight: 700; color: var(--verde); }
-  .td-preco { font-weight: 800; color: var(--cobre); white-space: nowrap; }
+  .td-preco { font-weight: 800; color: var(--texto); font-size: .95rem; white-space: nowrap; }
   .td-null { color: var(--borda); }
 
   /* Detalhes */
@@ -494,23 +494,21 @@ function card(d) {
   // Tabela de tipologias
   let tipologiasHtml = '';
   if (tips.length) {
+    // Colunas fixas na ordem certa: preço | m² | dorms | suítes | vagas | cond.
     const cols = [
-      { key: 'tipo',        label: 'Tipologia'   },
-      { key: 'area_util',   label: 'Área'        },
-      { key: 'quartos',     label: 'Dorms'       },
-      { key: 'suites',      label: 'Suítes'      },
-      { key: 'vagas',       label: 'Vagas'       },
-      { key: 'preco_venda', label: 'Venda'       },
-      { key: 'preco_aluguel', label: 'Aluguel'   },
-      { key: 'condominio',  label: 'Cond.'       },
-    ].filter(c => tips.some(t => t[c.key] != null));
+      { key: 'preco_venda',   label: 'A partir de',  fallback: 'preco_aluguel' },
+      { key: 'area_util',     label: 'm²',            fallback: 'area_total'   },
+      { key: 'quartos',       label: '🛏 Dorms'                                },
+      { key: 'suites',        label: '🚿 Suítes'                               },
+      { key: 'vagas',         label: '🚗 Vagas'                                },
+      { key: 'condominio',    label: 'Cond.'                                   },
+    ].filter(c => tips.some(t => t[c.key] != null || (c.fallback && t[c.fallback] != null)));
 
     const thead = cols.map(c => `<th>${c.label}</th>`).join('');
     const tbody = tips.map(t => {
       const tds = cols.map(c => {
-        const v = t[c.key];
+        const v = t[c.key] ?? (c.fallback ? t[c.fallback] : null);
         if (v == null) return `<td class="td-null">—</td>`;
-        if (c.key === 'tipo') return `<td class="td-tipo">${esc(String(v))}</td>`;
         if (c.key === 'preco_venda' || c.key === 'preco_aluguel') return `<td class="td-preco">${esc(String(v))}</td>`;
         return `<td>${esc(String(v))}</td>`;
       }).join('');

@@ -37,8 +37,10 @@ Retorne JSON com EXATAMENTE esta estrutura:
 }
 
 IMPORTANTE sobre tipologias:
+- Crie UMA entrada por linha/variação de preço ou metragem que aparecer na página.
+- Se a página mostrar uma tabela com várias linhas (ex: R$ 1.785.821 / 95m² / 3 dorms, R$ 2.674.429 / 128m² / 3 dorms), crie um objeto para CADA linha.
+- O campo "tipo" deve descrever a variação: "3 Dorms · 95m²", "3 Dorms · 128m²", "4 Dorms · 153m²", etc.
 - Se o imóvel tiver UMA única unidade (apartamento usado, casa), crie um array com UM objeto.
-- Se for um empreendimento com MÚLTIPLAS tipologias (ex: 2 dorms e 3 dorms com preços diferentes), crie um objeto por tipologia.
 - Nunca deixe o array vazio. Sempre extraia pelo menos uma tipologia.`;
 
 export async function extractImovelData(text, url) {
