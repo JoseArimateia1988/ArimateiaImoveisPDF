@@ -43,6 +43,8 @@ IMPORTANTE sobre tipologias:
 - Se o imóvel tiver UMA única unidade (apartamento usado, casa), crie um array com UM objeto.
 - Nunca deixe o array vazio. Sempre extraia pelo menos uma tipologia.`;
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 export async function extractImovelData(text, url) {
   const apiKey = (process.env.ANTHROPIC_API_KEY || '').replace(/\s/g, '');
 
@@ -50,13 +52,34 @@ export async function extractImovelData(text, url) {
 
   const client = new Anthropic({ apiKey });
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2048,
-    messages: [{ role: 'user', content: PROMPT(text, url) }],
-  });
+  const MAX_TENTATIVAS = 4;
+  let ultimoErro;
 
-  const raw = message.content[0].text.trim();
-  const json = raw.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
-  return JSON.parse(json);
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+    try {
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: PROMPT(text, url) }],
+      });
+
+      const raw = message.content[0].text.trim();
+      const json = raw.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
+      return JSON.parse(json);
+    } catch (e) {
+      ultimoErro = e;
+      const status = e?.status || e?.response?.status;
+      // 529 = overloaded, 429 = rate limit, 500/503 = erro temporário do servidor
+      const recuperavel = [429, 500, 503, 529].includes(status);
+      if (!recuperavel || tentativa === MAX_TENTATIVAS) break;
+      // Espera crescente: 2s, 4s, 8s
+      await sleep(2000 * Math.pow(2, tentativa - 1));
+    }
+  }
+
+  const status = ultimoErro?.status || ultimoErro?.response?.status;
+  if ([429, 500, 503, 529].includes(status)) {
+    throw new Error('Serviço da IA temporariamente sobrecarregado. Tente novamente em alguns instantes.');
+  }
+  throw ultimoErro;
 }
