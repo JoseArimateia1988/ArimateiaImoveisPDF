@@ -74,11 +74,12 @@ app.get('/img', async (req, res) => {
 });
 
 // Serve o frontend PDF
-app.use(express.static(path.join(__dirname, '../frontend')));
-app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
+app.use('/pdf', express.static(path.join(__dirname, '../frontend')));
+app.get('/pdf', (_, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
 
 // Serve o CRM
-app.use('/crm', express.static(path.join(__dirname, '../frontend/crm')));
+app.use(express.static(path.join(__dirname, '../frontend/crm')));
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../frontend/crm/index.html')));
 app.get('/crm/*', (_, res) => res.sendFile(path.join(__dirname, '../frontend/crm/index.html')));
 
 app.post('/api/extrair', async (req, res) => {
