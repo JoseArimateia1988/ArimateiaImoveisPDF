@@ -122,14 +122,18 @@ app.post('/api/claude-proxy', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: { message: 'ANTHROPIC_API_KEY não configurada.' } });
 
-  const { prompt, maxTokens = 1000, system, model } = req.body;
-  if (!prompt) return res.status(400).json({ error: { message: "Campo 'prompt' ausente." } });
+  const { prompt, messages, maxTokens = 1000, system, model } = req.body;
+  // aceita conversa multi-turno (messages) ou prompt único (compatível com chamadas antigas)
+  const msgs = Array.isArray(messages) && messages.length
+    ? messages
+    : (prompt ? [{ role: 'user', content: prompt }] : null);
+  if (!msgs) return res.status(400).json({ error: { message: "Campo 'prompt' ou 'messages' ausente." } });
 
   try {
     const body = {
       model: model || 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
+      messages: msgs,
     };
     if (system) body.system = system;
     const response = await fetch('https://api.anthropic.com/v1/messages', {
