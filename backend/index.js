@@ -89,10 +89,6 @@ app.post('/api/extrair', async (req, res) => {
     return res.status(400).json({ erro: 'Envie um array de URLs no campo "urls".' });
   }
 
-  if (urls.length > 10) {
-    return res.status(400).json({ erro: 'Máximo de 10 imóveis por vez.' });
-  }
-
   const resultados = await Promise.allSettled(
     urls.map(async (url) => {
       // Órulo: usa a API pública direta (tipologias + fotos), sem IA
