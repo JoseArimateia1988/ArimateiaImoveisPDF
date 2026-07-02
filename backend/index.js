@@ -30,7 +30,8 @@ function supa(path, opts = {}) {
   });
 }
 
-// Resumo leve por apresentação, pro histórico não precisar carregar os imoveis inteiros.
+// Resumo leve por apresentação (calculado na hora, a partir dos imoveis já salvos —
+// não precisa de coluna nova no banco).
 function resumoDe(imoveis) {
   const ok = (imoveis || []).filter(i => i && i.ok).map(i => i.dados);
   const d = ok[0] || {};
@@ -40,20 +41,12 @@ function resumoDe(imoveis) {
   return { n: ok.length, titulo: d.titulo || null, foto, local, preco };
 }
 
-async function dbSalvar(id, imoveis, resumo) {
-  // Tenta com a coluna `resumo`; se o schema ainda não foi migrado, salva sem ela.
-  let r = await supa('apresentacoes', {
+async function dbSalvar(id, imoveis) {
+  const r = await supa('apresentacoes', {
     method: 'POST',
-    body: JSON.stringify({ id, imoveis, votos: null, resumo: resumo || null }),
+    body: JSON.stringify({ id, imoveis, votos: null }),
   });
-  if (!r.ok) {
-    console.error('dbSalvar com resumo falhou, tentando sem colunas novas:', await r.text());
-    r = await supa('apresentacoes', {
-      method: 'POST',
-      body: JSON.stringify({ id, imoveis, votos: null }),
-    });
-    if (!r.ok) throw new Error(await r.text());
-  }
+  if (!r.ok) throw new Error(await r.text());
 }
 
 async function dbBuscar(id) {
@@ -172,7 +165,7 @@ app.post('/api/salvar', async (req, res) => {
   if (!Array.isArray(imoveis)) return res.status(400).json({ erro: 'Dados inválidos' });
   const id = randomUUID().slice(0, 8);
   try {
-    await dbSalvar(id, imoveis, resumoDe(imoveis));
+    await dbSalvar(id, imoveis);
     res.json({ id });
   } catch (e) {
     console.error('Erro ao salvar apresentação:', e.message);
@@ -180,33 +173,26 @@ app.post('/api/salvar', async (req, res) => {
   }
 });
 
-// Histórico: lista apresentações (leve, sem os imoveis inteiros). Ordena por data.
+// Histórico: lista apresentações com resumo leve calculado na hora.
+// Não depende de colunas novas — só usa o que já existe (id, imoveis, criado_em se houver).
 app.get('/api/apresentacoes', async (req, res) => {
   try {
-    const r = await supa('apresentacoes?select=id,cliente,criado_em,resumo&order=criado_em.desc');
+    // tenta ordenar por data; se a coluna criado_em não existir, cai pro select simples
+    let r = await supa('apresentacoes?select=id,criado_em,imoveis&order=criado_em.desc');
+    if (!r.ok) r = await supa('apresentacoes?select=id,imoveis');
     if (!r.ok) {
-      console.error('Listar apresentações falhou (schema não migrado?):', await r.text());
+      console.error('Listar apresentações falhou:', await r.text());
       return res.json([]);
     }
-    res.json(await r.json());
+    const rows = await r.json();
+    res.json(rows.map(row => ({
+      id: row.id,
+      criado_em: row.criado_em || null,
+      resumo: resumoDe(row.imoveis),
+    })));
   } catch (e) {
     console.error('Erro ao listar apresentações:', e.message);
     res.json([]);
-  }
-});
-
-// Renomear/rotular uma apresentação (nome do cliente) pelo histórico/modal.
-app.patch('/api/apresentacoes/:id', async (req, res) => {
-  const { cliente } = req.body;
-  try {
-    const r = await supa(`apresentacoes?id=eq.${req.params.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ cliente: cliente || null }),
-    });
-    if (!r.ok) return res.status(500).json({ erro: await r.text() });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ erro: e.message });
   }
 });
 

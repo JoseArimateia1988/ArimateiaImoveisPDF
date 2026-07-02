@@ -355,13 +355,15 @@ async function abrirHistorico() {
       cont.innerHTML = '<p style="color:var(--suave);font-size:.85rem;text-align:center;padding:2rem">Nenhuma apresentação salva ainda. Gere uma e o link ficará guardado aqui.</p>';
       return;
     }
+    const nomes = nomesApr();
     cont.innerHTML = lista.map(a => {
       const rs = a.resumo || {};
-      const titulo = esc(a.cliente || rs.titulo || 'Apresentação');
+      const nome = nomes[a.id] || '';
+      const titulo = esc(nome || rs.titulo || 'Apresentação');
       const sub = [rs.n ? rs.n + (rs.n > 1 ? ' imóveis' : ' imóvel') : null, rs.local, rs.preco ? 'a partir de ' + rs.preco : null].filter(Boolean).join(' · ');
       const data = a.criado_em ? new Date(a.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
       const foto = rs.foto ? `<img src="${esc(rs.foto)}" onerror="this.style.display='none'" style="width:64px;height:64px;object-fit:cover;border-radius:3px;flex-shrink:0">` : '';
-      const nomeAtual = a.cliente ? esc(a.cliente) : '';
+      const nomeAtual = esc(nome);
       return `<div style="background:var(--creme);border-radius:4px;padding:.9rem;margin-bottom:.7rem;box-shadow:0 1px 8px rgba(0,0,0,.08)">
         <div style="display:flex;gap:.8rem;align-items:flex-start">
           ${foto}
@@ -393,16 +395,15 @@ function copiarLink(path, btn) {
   setTimeout(() => btn.textContent = t, 1500);
 }
 
-async function salvarNome(id, btn, inputId) {
+// Nomes dos clientes ficam guardados no navegador (não precisa de coluna no banco).
+function nomesApr() { try { return JSON.parse(localStorage.getItem('apr_nomes') || '{}'); } catch { return {}; } }
+function setNomeApr(id, nome) { const m = nomesApr(); if (nome) m[id] = nome; else delete m[id]; localStorage.setItem('apr_nomes', JSON.stringify(m)); }
+
+function salvarNome(id, btn, inputId) {
   const val = document.getElementById(inputId || ('nome-' + id)).value.trim();
-  btn.disabled = true; btn.textContent = '...';
-  try {
-    const r = await fetch(`${BACKEND}/api/apresentacoes/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: val }),
-    });
-    btn.textContent = r.ok ? '✓' : 'Erro';
-  } catch { btn.textContent = 'Erro'; }
-  setTimeout(() => { btn.textContent = 'Salvar'; btn.disabled = false; }, 1500);
+  setNomeApr(id, val);
+  btn.textContent = '✓';
+  setTimeout(() => { btn.textContent = 'Salvar'; }, 1500);
 }
 
 function voltarInicio() { mostrarTela('entrada'); setStatus(''); }
