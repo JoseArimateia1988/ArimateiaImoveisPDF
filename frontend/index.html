@@ -251,7 +251,19 @@
     <p>Cole um ou mais links da Lopes.com.br (um por linha) e gere uma apresentação profissional em PDF.</p>
     <textarea id="campo-urls" placeholder="https://www.lopes.com.br/imovel/...&#10;https://www.lopes.com.br/imovel/..."></textarea>
     <button class="btn-primario" id="btn-gerar">Gerar Apresentação</button>
+    <button type="button" onclick="abrirHistorico()" style="width:100%;margin-top:.6rem;background:transparent;border:1.5px solid var(--borda);color:var(--verde);padding:.65rem;border-radius:3px;font-size:.8rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer">📁 Minhas apresentações</button>
     <p class="status-msg" id="status"></p>
+  </div>
+</div>
+
+<!-- TELA 3: HISTÓRICO -->
+<div id="tela-historico" style="display:none;min-height:100vh;background:#d8d4cc;padding:2rem 1rem">
+  <div style="max-width:680px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
+      <div style="font-size:.95rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--verde)">📁 Minhas Apresentações</div>
+      <button onclick="mostrarTela('entrada')" style="background:transparent;border:1.5px solid var(--borda);color:var(--suave);padding:.45rem 1rem;border-radius:3px;font-size:.78rem;cursor:pointer">← Voltar</button>
+    </div>
+    <div id="lista-historico"></div>
   </div>
 </div>
 
@@ -329,6 +341,68 @@ function setStatus(msg, erro = false) {
 function mostrarTela(nome) {
   document.getElementById('tela-entrada').style.display   = nome === 'entrada'   ? 'flex'  : 'none';
   document.getElementById('tela-resultado').style.display = nome === 'resultado' ? 'block' : 'none';
+  document.getElementById('tela-historico').style.display = nome === 'historico' ? 'block' : 'none';
+}
+
+async function abrirHistorico() {
+  mostrarTela('historico');
+  const cont = document.getElementById('lista-historico');
+  cont.innerHTML = '<p style="color:var(--suave);font-size:.85rem;text-align:center;padding:2rem">Carregando...</p>';
+  try {
+    const r = await fetch(`${BACKEND}/api/apresentacoes`);
+    const lista = await r.json();
+    if (!Array.isArray(lista) || !lista.length) {
+      cont.innerHTML = '<p style="color:var(--suave);font-size:.85rem;text-align:center;padding:2rem">Nenhuma apresentação salva ainda. Gere uma e o link ficará guardado aqui.</p>';
+      return;
+    }
+    cont.innerHTML = lista.map(a => {
+      const rs = a.resumo || {};
+      const titulo = esc(a.cliente || rs.titulo || 'Apresentação');
+      const sub = [rs.n ? rs.n + (rs.n > 1 ? ' imóveis' : ' imóvel') : null, rs.local, rs.preco ? 'a partir de ' + rs.preco : null].filter(Boolean).join(' · ');
+      const data = a.criado_em ? new Date(a.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+      const foto = rs.foto ? `<img src="${esc(rs.foto)}" onerror="this.style.display='none'" style="width:64px;height:64px;object-fit:cover;border-radius:3px;flex-shrink:0">` : '';
+      const nomeAtual = a.cliente ? esc(a.cliente) : '';
+      return `<div style="background:var(--creme);border-radius:4px;padding:.9rem;margin-bottom:.7rem;box-shadow:0 1px 8px rgba(0,0,0,.08)">
+        <div style="display:flex;gap:.8rem;align-items:flex-start">
+          ${foto}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.7rem;color:var(--suave)">${data}</div>
+            <div style="font-weight:700;font-size:.92rem;color:var(--verde);margin:.1rem 0">${titulo}</div>
+            <div style="font-size:.78rem;color:var(--suave)">${esc(sub)}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem">
+          <a href="/ver/${a.id}" target="_blank" style="flex:1;text-align:center;background:var(--verde);color:var(--creme);padding:.45rem;border-radius:3px;font-size:.75rem;text-decoration:none;min-width:120px">↗ Link do cliente</a>
+          <a href="/resultado/${a.id}" target="_blank" style="flex:1;text-align:center;background:var(--cobre);color:#fff;padding:.45rem;border-radius:3px;font-size:.75rem;text-decoration:none;min-width:120px">📊 Resultado</a>
+          <button onclick="copiarLink('/ver/${a.id}',this)" style="background:transparent;border:1.5px solid var(--borda);color:var(--suave);padding:.45rem .8rem;border-radius:3px;font-size:.75rem;cursor:pointer">Copiar</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem">
+          <input id="nome-${a.id}" value="${nomeAtual}" placeholder="Nome do cliente (opcional)" style="flex:1;padding:.4rem .6rem;border:1.5px solid var(--borda);border-radius:3px;font-size:.78rem;background:#fff">
+          <button onclick="salvarNome('${a.id}',this)" style="background:transparent;border:1.5px solid var(--verde);color:var(--verde);padding:.4rem .8rem;border-radius:3px;font-size:.75rem;cursor:pointer">Salvar</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    cont.innerHTML = '<p style="color:#c0392b;font-size:.85rem;text-align:center;padding:2rem">Erro ao carregar. Tente novamente.</p>';
+  }
+}
+
+function copiarLink(path, btn) {
+  navigator.clipboard.writeText(window.location.origin + path);
+  const t = btn.textContent; btn.textContent = '✓';
+  setTimeout(() => btn.textContent = t, 1500);
+}
+
+async function salvarNome(id, btn, inputId) {
+  const val = document.getElementById(inputId || ('nome-' + id)).value.trim();
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch(`${BACKEND}/api/apresentacoes/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: val }),
+    });
+    btn.textContent = r.ok ? '✓' : 'Erro';
+  } catch { btn.textContent = 'Erro'; }
+  setTimeout(() => { btn.textContent = 'Salvar'; btn.disabled = false; }, 1500);
 }
 
 function voltarInicio() { mostrarTela('entrada'); setStatus(''); }
@@ -376,6 +450,13 @@ async function mostrarModal(linkCliente, linkResultado, apresentacaoId) {
   overlay.innerHTML = `
     <div style="background:var(--creme);border-radius:4px;padding:2rem;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
       <div style="font-size:.7rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--verde);margin-bottom:1.2rem">Links gerados</div>
+      <div style="margin-bottom:1.2rem">
+        <div style="font-size:.72rem;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">🏷 Nome do cliente (para o histórico)</div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <input id="nome-modal-${apresentacaoId}" placeholder="Ex: Bel, Jack, Fabíola..." style="flex:1;padding:.5rem .7rem;border:1.5px solid var(--borda);border-radius:3px;font-size:.8rem;background:#fff">
+          <button onclick="salvarNome('${apresentacaoId}',this,'nome-modal-${apresentacaoId}')" style="padding:.5rem .9rem;background:var(--verde);color:var(--creme);border:none;border-radius:3px;font-size:.75rem;cursor:pointer;white-space:nowrap">Salvar</button>
+        </div>
+      </div>
       <div style="margin-bottom:1.2rem">
         <div style="font-size:.72rem;color:var(--suave);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">📤 Link para o cliente</div>
         <div style="display:flex;gap:.5rem;align-items:center">
