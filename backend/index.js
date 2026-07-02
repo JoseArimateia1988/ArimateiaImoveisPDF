@@ -242,13 +242,29 @@ function paginaResultado(imoveis, votos, id) {
   const nao = ok.filter(d => votos && votos[d.idx] === 'dislike');
   const sem = ok.filter(d => !votos || (!votos[d.idx]));
 
+  const esc = s => s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   function listaImoveis(lista, cor) {
     if (!lista.length) return '<p style="color:#999;font-size:.85rem">Nenhum</p>';
-    return lista.map(d => `<div style="border-left:3px solid ${cor};padding:.5rem 1rem;margin-bottom:.5rem;background:#fff;border-radius:2px">
-      <strong style="font-size:.9rem">${d.titulo || 'Imóvel'}</strong><br>
-      <span style="font-size:.78rem;color:#666">${d.endereco || ''}</span>
-      ${d.preco_venda || d.preco_aluguel ? `<span style="float:right;font-weight:700;color:#7a4f2d">${d.preco_venda || d.preco_aluguel}</span>` : ''}
-    </div>`).join('');
+    return lista.map(d => {
+      const preco = d.preco_venda || d.preco_aluguel || (d.tipologias || []).map(t => t.preco_venda || t.preco_aluguel).find(Boolean);
+      const foto = (d.fotos || []).find(Boolean);
+      const thumb = foto ? `<img src="${esc(foto)}" style="width:60px;height:60px;object-fit:cover;border-radius:3px;flex-shrink:0" onerror="this.style.display='none'">` : '';
+      const ref = d.codigo ? `<span style="font-size:.66rem;font-weight:700;letter-spacing:.06em;color:#7a4f2d;text-transform:uppercase">${esc(d.codigo)}</span>` : '<span></span>';
+      const link = d.url_origem ? `<a href="${esc(d.url_origem)}" target="_blank" rel="noreferrer" style="font-size:.72rem;color:#243b2a;text-decoration:underline;text-underline-offset:2px">ver anúncio original ↗</a>` : '';
+      return `<div style="display:flex;gap:.7rem;align-items:flex-start;border-left:3px solid ${cor};padding:.6rem .9rem;margin-bottom:.5rem;background:#fff;border-radius:2px">
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:baseline">
+          ${ref}
+          ${preco ? `<span style="font-weight:700;color:#7a4f2d;font-size:.85rem;white-space:nowrap">${esc(preco)}</span>` : ''}
+        </div>
+        <strong style="font-size:.88rem;display:block;margin:.15rem 0">${esc(d.titulo || 'Imóvel')}</strong>
+        <span style="font-size:.76rem;color:#666">${esc(d.endereco || '')}</span>
+        ${link ? `<div style="margin-top:.35rem">${link}</div>` : ''}
+      </div>
+    </div>`;
+    }).join('');
   }
 
   const aguardando = !votos ? `<div style="background:#fffbe6;border:1px solid #f0c040;padding:.8rem 1.2rem;border-radius:4px;margin-bottom:1.5rem;font-size:.85rem;color:#7a6200">
@@ -276,6 +292,7 @@ function paginaResultado(imoveis, votos, id) {
 <div class="container">
   <div class="header"><h1>Resultado da Avaliação</h1><span>Arimateia Imóveis</span></div>
   <div class="body">
+    <div style="margin-bottom:1.2rem"><a href="/ver/${id}" target="_blank" rel="noreferrer" style="display:inline-block;background:#243b2a;color:#ede8df;padding:.5rem 1.1rem;border-radius:3px;font-size:.75rem;letter-spacing:.05em;text-decoration:none">↗ Abrir a apresentação como o cliente vê</a></div>
     ${aguardando}
     <div class="secao">
       <h2 class="verde">👍 Curtiu (${curtidos.length})</h2>
@@ -334,6 +351,17 @@ function paginaVisualizacao(imoveis, id, jaVotou, votosSalvos) {
   .detalhes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem 2rem; margin-bottom:1.2rem; }
   .detalhe-item .dl { font-size:.65rem; color:var(--suave); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.2rem; }
   .detalhe-item .dv { font-size:.95rem; font-weight:600; color:var(--texto); }
+  .tipologias-wrapper { padding:1.4rem 2rem; border-bottom:1px solid var(--borda); }
+  .tipologias-titulo { font-size:.65rem; color:var(--suave); text-transform:uppercase; letter-spacing:.1em; font-weight:700; margin-bottom:.8rem; }
+  .tipologias-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  .tipologias-table th { text-align:left; font-size:.62rem; color:var(--suave); text-transform:uppercase; letter-spacing:.07em; font-weight:600; padding:.45rem .8rem .45rem 0; border-bottom:1px solid var(--borda); white-space:nowrap; }
+  .tipologias-table th:not(:first-child) { text-align:center; }
+  .tipologias-table td { padding:.65rem .8rem .65rem 0; border-bottom:1px solid var(--borda); vertical-align:middle; }
+  .tipologias-table td:not(:first-child) { text-align:center; color:var(--suave); }
+  .tipologias-table tr:last-child td { border-bottom:none; }
+  .td-preco { font-weight:800; color:var(--texto); font-size:.95rem; white-space:nowrap; }
+  .td-null { color:var(--borda); }
+  @media (max-width:600px){ .tipologias-wrapper { padding:1rem 1.2rem; overflow-x:auto; } .tipologias-table { font-size:.78rem; min-width:420px; } }
   .descricao { font-size:.88rem; line-height:1.75; color:#444; margin-bottom:1.2rem; border-top:1px solid var(--borda); padding-top:1.2rem; }
   .tags { display:flex; flex-wrap:wrap; gap:.4rem; }
   .tag { border:1px solid var(--borda); color:var(--suave); font-size:.72rem; padding:.25rem .7rem; border-radius:2px; letter-spacing:.04em; text-transform:uppercase; }
@@ -390,21 +418,24 @@ function renderizar(){
     const d=item.dados;
     const fotos=(d.fotos||[]).filter(Boolean);
     const gal=fotos.length?'<div class="galeria-grid">'+fotos.map(s=>'<img src="'+esc(s)+'" loading="lazy" onerror="this.style.display=\\'none\\'">').join('')+'</div>':'<div class="galeria-vazia">Fotos não disponíveis</div>';
-    const breadcrumb=[d.bairro,d.cidade,d.preco_venda?'Venda':d.preco_aluguel?'Locação':null].filter(Boolean).join(' · ');
+    const tips=(d.tipologias||[]);
+    const temVenda=tips.some(t=>t.preco_venda);
+    const temAluguel=tips.some(t=>t.preco_aluguel);
+    const breadcrumb=[d.bairro,d.cidade,temVenda?'Venda':temAluguel?'Locação':null].filter(Boolean).join(' · ');
     const mapsUrl=d.endereco?'https://maps.google.com/?q='+encodeURIComponent((d.endereco||'')+(d.cidade?', '+d.cidade:'')):'';
     const endHtml=d.endereco?(mapsUrl?'<a href="'+esc(mapsUrl)+'" target="_blank">📍 '+esc(d.endereco)+'</a>':'📍 '+esc(d.endereco)):'';
     const refHtml=d.codigo?'<div class="card-ref-destaque">'+esc(d.codigo)+'</div>':'';
-    const fichasDef=[d.area_total?{v:d.area_total,l:'Área Total'}:d.area_util?{v:d.area_util,l:'Área Útil'}:null,d.quartos!=null?{v:d.quartos,l:'Dormitórios'}:null,d.vagas!=null?{v:d.vagas,l:'Vagas'}:null,d.banheiros!=null?{v:d.banheiros,l:'Banheiros'}:null].filter(Boolean);
-    const fichasHtml=fichasDef.length?'<div class="fichas-wrapper"><div class="fichas">'+fichasDef.map(f=>'<div class="ficha"><div class="ficha-v">'+esc(String(f.v))+'</div><div class="ficha-l">'+esc(f.l)+'</div></div>').join('')+'</div></div>':'';
-    const preco=d.preco_venda||d.preco_aluguel||null;
-    const extras=[d.condominio?'Condomínio: '+d.condominio:null,d.iptu?'IPTU: '+d.iptu:null].filter(Boolean).join('<br>');
-    const precoHtml=preco?'<div class="preco-wrapper"><div class="preco-valor">'+esc(preco)+'</div>'+(extras?'<div class="preco-extras">'+extras+'</div>':'')+'</div>':'';
-    const detsDef=[d.area_util&&d.area_total?{l:'Área Útil',v:d.area_util}:null,d.suites!=null?{l:'Suítes',v:d.suites}:null,d.andar?{l:'Andar',v:d.andar}:null,d.condominio?{l:'Condomínio',v:d.condominio}:null,d.iptu?{l:'IPTU',v:d.iptu}:null].filter(Boolean);
-    const detsHtml=detsDef.length?'<div class="detalhes-grid">'+detsDef.map(x=>'<div class="detalhe-item"><div class="dl">'+esc(x.l)+'</div><div class="dv">'+esc(String(x.v))+'</div></div>').join('')+'</div>':'';
+    let tipologiasHtml='';
+    if(tips.length){
+      const cols=[{key:'preco_venda',label:'A partir de',fallback:'preco_aluguel'},{key:'area_util',label:'m²',fallback:'area_total'},{key:'quartos',label:'🛏 Dorms'},{key:'suites',label:'🚿 Suítes'},{key:'vagas',label:'🚗 Vagas'},{key:'condominio',label:'Cond.'}].filter(c=>tips.some(t=>t[c.key]!=null||(c.fallback&&t[c.fallback]!=null)));
+      const thead=cols.map(c=>'<th>'+c.label+'</th>').join('');
+      const tbody=tips.map(t=>{const tds=cols.map(c=>{const v=t[c.key]!=null?t[c.key]:(c.fallback?t[c.fallback]:null);if(v==null)return '<td class="td-null">—</td>';if(c.key==='preco_venda'||c.key==='preco_aluguel')return '<td class="td-preco">'+esc(String(v))+'</td>';return '<td>'+esc(String(v))+'</td>';}).join('');return '<tr>'+tds+'</tr>';}).join('');
+      tipologiasHtml='<div class="tipologias-wrapper"><div class="tipologias-titulo">Tipologias disponíveis</div><table class="tipologias-table"><thead><tr>'+thead+'</tr></thead><tbody>'+tbody+'</tbody></table></div>';
+    }
     const tags=(d.caracteristicas||[]).slice(0,16).map(t=>'<span class="tag">'+esc(t)+'</span>').join('');
     const el=document.createElement('div');
     el.className='imovel-card';
-    el.innerHTML='<div class="card-header"><div class="card-header-top">'+(breadcrumb?'<div class="card-breadcrumb">'+esc(breadcrumb)+'</div>':'<div></div>')+'</div>'+refHtml+'<div class="card-titulo">'+esc(d.titulo||'Imóvel')+'</div>'+(endHtml?'<div class="card-endereco">'+endHtml+'</div>':'')+'</div>'+fichasHtml+precoHtml+gal+'<div class="detalhes-wrapper">'+detsHtml+(d.descricao?'<p class="descricao">'+esc(d.descricao)+'</p>':'')+(tags?'<div class="tags">'+tags+'</div>':'')+'</div><div class="card-rodape"><span class="marca">Arimateia Imóveis</span>'+(d.url_origem?'<a href="'+esc(d.url_origem)+'" target="_blank">Ver anúncio original</a>':'')+'</div>';
+    el.innerHTML='<div class="card-header"><div class="card-header-top">'+(breadcrumb?'<div class="card-breadcrumb">'+esc(breadcrumb)+'</div>':'<div></div>')+'</div>'+refHtml+'<div class="card-titulo">'+esc(d.titulo||'Imóvel')+'</div>'+(endHtml?'<div class="card-endereco">'+endHtml+'</div>':'')+'</div>'+tipologiasHtml+gal+'<div class="detalhes-wrapper">'+(d.descricao?'<p class="descricao">'+esc(d.descricao)+'</p>':'')+(tags?'<div class="tags">'+tags+'</div>':'')+'</div><div class="card-rodape"><span class="marca">Arimateia Imóveis</span>'+(d.url_origem?'<a href="'+esc(d.url_origem)+'" target="_blank">Ver anúncio original</a>':'')+'</div>';
     // Botões de avaliação
     const avalBar = document.createElement('div');
     avalBar.className = 'avaliacao-bar';
