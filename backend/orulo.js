@@ -62,10 +62,14 @@ async function apiGet(path, publicKey) {
 export async function fetchOruloImovel(url) {
   const { buildingId, publicKey } = await getCredentials(url);
 
-  const [building, tipoData, imgData] = await Promise.all([
+  const [building, tipoData, imgData, floorData] = await Promise.all([
     apiGet(`/buildings/${buildingId}`, publicKey),
     apiGet(`/buildings/${buildingId}/typologies`, publicKey),
     apiGet(`/buildings/${buildingId}/images?dimensions[]=2280x1800`, publicKey).catch(() => ({ images: [] })),
+    // Plantas são um recurso separado na API do Órulo. Mantemos separado das fotos
+    // para poder dar tratamento próprio no PDF e na etapa de revisão.
+    apiGet(`/buildings/${buildingId}/floor_plans?dimensions[]=1024x1024&dimensions[]=2280x1800`, publicKey)
+      .catch(() => ({ floor_plans: [] })),
   ]);
 
   const addr = building.address || {};
@@ -100,6 +104,16 @@ export async function fetchOruloImovel(url) {
     .map((i) => i['2280x1800'] || i.url)
     .filter(Boolean);
 
+  const plantas = (floorData.floor_plans || [])
+    .map((p) => ({
+      id: p.id ?? null,
+      descricao: p.description || null,
+      tipo: p.type || null,
+      associations: p.associations || null,
+      url: p['2280x1800'] || p['1024x1024'] || p.url || null,
+    }))
+    .filter((p) => p.url);
+
   return {
     codigo: building.id ? `ORL${building.id}` : null,
     titulo: building.name || 'Empreendimento',
@@ -111,5 +125,6 @@ export async function fetchOruloImovel(url) {
     total_andares: building.number_of_floors ?? null,
     tipologias: tipologiasUnicas.length ? tipologiasUnicas : tipologias,
     fotos,
+    plantas,
   };
 }
