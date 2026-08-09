@@ -8,6 +8,7 @@ import { extractImovelData } from './claude.js';
 import { isOruloUrl, fetchOruloImovel } from './orulo.js';
 import { databaseMode, ensureSchema, savePresentation, getPresentation, listPresentations, saveVotes } from './db.js';
 import { registerAuthRoutes, requireUser } from './auth.js';
+import { recordUsage, usageSummary } from './usage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -78,11 +79,24 @@ app.post('/api/extrair', requireUser, async (req, res) => {
   if (!Array.isArray(urls) || !urls.length) return res.status(400).json({ erro: 'Envie pelo menos uma URL.' });
   if (urls.length > 50) return res.status(400).json({ erro: 'Envie no máximo 50 URLs por vez.' });
 
-  const resultados = await Promise.allSettled(urls.map(async (url) => {
+  const sources = urls.map(url => isOruloUrl(url) ? 'orulo' : 'web_ai');
+  const resultados = await Promise.allSettled(urls.map(async (url, i) => {
     if (!/^https?:\/\//i.test(url)) throw new Error('URL inválida');
-    if (isOruloUrl(url)) return { ...(await fetchOruloImovel(url)), url_origem: url };
+    if (sources[i] === 'orulo') return { ...(await fetchOruloImovel(url)), url_origem: url };
     const { text, images } = await fetchPageContent(url);
     return { ...(await extractImovelData(text, url)), fotos: images, plantas: [], url_origem: url };
+  }));
+
+  await Promise.all(resultados.map((r, i) => {
+    let host = '';
+    try { host = new URL(urls[i]).hostname; } catch {}
+    return recordUsage({
+      userId: req.user.id,
+      source: sources[i],
+      units: 1,
+      success: r.status === 'fulfilled',
+      metadata: { host },
+    });
   }));
 
   res.json({
@@ -93,6 +107,11 @@ app.post('/api/extrair', requireUser, async (req, res) => {
 });
 
 app.get('/health', (_, res) => res.json({ status: 'ok', database: databaseMode() }));
+
+app.get('/api/usage', requireUser, async (req, res) => {
+  try { res.json(await usageSummary(req.user.id, { days: Number(req.query.days || 30) })); }
+  catch (e) { console.error('Erro ao ler uso:', e.message); res.status(500).json({ erro: 'Não foi possível carregar o uso.' }); }
+});
 
 app.post('/api/salvar', requireUser, async (req, res) => {
   const { imoveis, cliente, modelo } = req.body || {};
