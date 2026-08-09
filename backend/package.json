@@ -3,8 +3,8 @@
   "version": "1.1.0",
   "type": "module",
   "scripts": {
-    "start": "node product-index.js",
-    "dev": "node --watch product-index.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
