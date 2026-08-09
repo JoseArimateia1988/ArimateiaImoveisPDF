@@ -23,21 +23,61 @@
       <div class="marca-topo">Arimateia Imóveis</div><div class="traco"></div>
       <div class="eyebrow">Gerador de apresentação</div>
       <h1 style="font-size:25px;margin:6px 0 8px">Cole os imóveis. Revise. Envie.</h1>
-      <p class="muted">Use links do Órulo ou outras fontes compatíveis, um por linha. Depois você escolhe as imagens e as duas fotos de destaque antes de gerar.</p>
+      <p class="muted">Use links do Órulo ou outras fontes compatíveis, um por linha. Depois você escolhe as imagens, as duas fotos de destaque e o visual da apresentação.</p>
       <textarea id="campo-urls" class="campo" placeholder="https://www.orulo.com.br/s/...&#10;https://..."></textarea>
       <button id="btn-gerar" class="btn btn-verde btn-full">Buscar imóveis</button>
-      <button class="btn btn-claro btn-full" onclick="abrirHistorico()">Minhas apresentações</button>
+      <div class="entrada-secundarias">
+        <button class="btn btn-claro" onclick="abrirPerfil()">Meu perfil</button>
+        <button class="btn btn-claro" onclick="abrirHistorico()">Minhas apresentações</button>
+      </div>
       <div id="status" class="status"></div>
     </div>
+  </section>
+
+  <section id="tela-perfil" class="tela">
+    <div class="topbar no-print"><strong>Meu perfil</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
+    <main class="wrap perfil-wrap">
+      <div class="painel-titulo"><div><div class="eyebrow">Dados do corretor</div><h1>Como você aparece nas apresentações</h1><p class="muted">Esses dados entram no PDF e no link enviado ao cliente. Você altera uma vez e reaproveita nas próximas seleções.</p></div></div>
+      <section class="perfil-card">
+        <div class="perfil-grid">
+          <label>Nome<input id="perfil-nome" class="campo" placeholder="José Arimateia"></label>
+          <label>Marca / nome profissional<input id="perfil-marca" class="campo" placeholder="Arimateia Imóveis"></label>
+          <label>CRECI<input id="perfil-creci" class="campo" placeholder="CRECI 000000-F"></label>
+          <label>WhatsApp<input id="perfil-whatsapp" class="campo" placeholder="(11) 99999-9999"></label>
+          <label>Instagram<input id="perfil-instagram" class="campo" placeholder="@usuario"></label>
+          <label>E-mail<input id="perfil-email" class="campo" type="email" placeholder="voce@email.com"></label>
+          <label>URL da foto<input id="perfil-foto" class="campo" placeholder="https://..."></label>
+          <label>URL do logo<input id="perfil-logo" class="campo" placeholder="https://..."></label>
+        </div>
+        <div class="cores-grid">
+          <label>Cor principal<input id="perfil-cor-principal" type="color" value="#243b2a"></label>
+          <label>Cor de destaque<input id="perfil-cor-secundaria" type="color" value="#7a4f2d"></label>
+          <label class="check-label"><input id="perfil-usar-cores" type="checkbox"> Usar minhas cores nos modelos</label>
+        </div>
+        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Restaurar padrão</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar perfil</button></div>
+        <div id="perfil-status" class="status"></div>
+      </section>
+    </main>
   </section>
 
   <section id="tela-revisao" class="tela">
     <div class="topbar no-print"><strong>Revisão da apresentação</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Links</button></div></div>
     <main class="wrap">
       <div class="painel-titulo">
-        <div><div class="eyebrow">Antes de gerar</div><h1>Escolha o que entra</h1><p class="muted">Até 12 visuais por imóvel, com 2 fotos hero. Plantas aparecem separadas quando a Órulo disponibiliza.</p></div>
+        <div><div class="eyebrow">Antes de gerar</div><h1>Escolha o que entra</h1><p class="muted">Até 12 visuais por imóvel, com 2 fotos hero. Plantas aparecem separadas quando a origem disponibiliza.</p></div>
         <div style="min-width:260px"><label class="eyebrow" for="nome-cliente">Seleção preparada para</label><input id="nome-cliente" class="campo" placeholder="Nome do cliente (opcional)" style="margin-top:5px"></div>
       </div>
+
+      <section class="modelos-bloco">
+        <div class="modelos-head"><div><div class="eyebrow">Visual da apresentação</div><h2>Escolha um modelo</h2></div><span class="muted">A informação é a mesma. O que muda é a direção visual.</span></div>
+        <div class="modelos-grid">
+          <button class="modelo-card" data-modelo="editorial" onclick="setModelo('editorial')"><span class="modelo-preview preview-editorial"><i></i><b></b><b></b></span><strong>Editorial</strong><small>Fotográfico, sofisticado e com mais presença de imagem.</small></button>
+          <button class="modelo-card" data-modelo="clean" onclick="setModelo('clean')"><span class="modelo-preview preview-clean"><i></i><b></b><b></b></span><strong>Clean</strong><small>Claro, organizado e fácil de comparar.</small></button>
+          <button class="modelo-card" data-modelo="bold" onclick="setModelo('bold')"><span class="modelo-preview preview-bold"><i></i><b></b><b></b></span><strong>Bold</strong><small>Mais gráfico e com marca pessoal em evidência.</small></button>
+          <button class="modelo-card" data-modelo="minimal" onclick="setModelo('minimal')"><span class="modelo-preview preview-minimal"><i></i><b></b><b></b></span><strong>Minimal</strong><small>Mais silencioso, premium e com bastante respiro.</small></button>
+        </div>
+      </section>
+
       <div id="lista-revisao"></div>
       <div class="revisao-rodape no-print"><button class="btn btn-claro" onclick="voltarInicio()">Voltar</button><button id="btn-aplicar" class="btn btn-verde">Ver apresentação</button></div>
     </main>
@@ -49,8 +89,8 @@
   </section>
 
   <section id="tela-resultado" class="tela">
-    <div class="topbar no-print"><strong>Prévia da apresentação</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarRevisao()">← Revisar imagens</button><button id="btn-link" class="btn btn-claro" onclick="gerarLink()">Compartilhar link</button><button id="btn-pdf" class="btn btn-cobre" onclick="baixarPDF()">Baixar PDF</button></div></div>
-    <div id="documento"></div>
+    <div class="topbar no-print"><strong>Prévia da apresentação</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarRevisao()">← Revisar</button><button id="btn-link" class="btn btn-claro" onclick="gerarLink()">Compartilhar link</button><button id="btn-pdf" class="btn btn-cobre" onclick="baixarPDF()">Baixar PDF</button></div></div>
+    <div id="documento" class="modelo-editorial"></div>
   </section>
 
   <script src="/pdf/v1.js"></script>
