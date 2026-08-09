@@ -20,6 +20,16 @@ function getPool() {
   return pool;
 }
 
+function requirePostgres() {
+  const p = getPool();
+  if (!p) {
+    const e = new Error('Contas exigem DATABASE_URL configurada.');
+    e.code = 'AUTH_REQUIRES_POSTGRES';
+    throw e;
+  }
+  return p;
+}
+
 function supa(path, opts = {}) {
   if (!SUPA_URL || !SUPA_KEY) throw new Error('Banco não configurado');
   return fetch(`${SUPA_URL}/rest/v1/${path}`, {
@@ -45,6 +55,34 @@ export async function ensureSchema() {
   if (!p) return;
 
   await p.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id UUID PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await p.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await p.query(`
     CREATE TABLE IF NOT EXISTS presentations (
       id VARCHAR(16) PRIMARY KEY,
       user_id UUID NULL,
@@ -58,12 +96,111 @@ export async function ensureSchema() {
     )
   `);
 
-  // Mantém compatibilidade se a tabela tiver sido criada por uma versão anterior.
+  await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS user_id UUID NULL`);
+  await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS client_name TEXT NULL`);
   await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS template TEXT NOT NULL DEFAULT 'editorial'`);
   await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}'::jsonb`);
   await p.query(`CREATE INDEX IF NOT EXISTS idx_presentations_created_at ON presentations(created_at DESC)`);
   await p.query(`CREATE INDEX IF NOT EXISTS idx_presentations_user_id ON presentations(user_id)`);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
+  await p.query(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`);
 }
+
+// ── Contas e perfil ────────────────────────────────────────────────────────
+
+export async function createUser({ id, email, passwordHash, profile = {} }) {
+  const p = requirePostgres();
+  await ensureSchema();
+  const client = await p.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)`,
+      [id, email, passwordHash]
+    );
+    await client.query(
+      `INSERT INTO user_profiles (user_id, data) VALUES ($1, $2::jsonb)`,
+      [id, JSON.stringify(profile || {})]
+    );
+    await client.query('COMMIT');
+    return { id, email, profile };
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function findUserByEmail(email) {
+  const p = requirePostgres();
+  await ensureSchema();
+  const { rows } = await p.query(
+    `SELECT u.id, u.email, u.password_hash, COALESCE(p.data, '{}'::jsonb) AS profile
+     FROM users u
+     LEFT JOIN user_profiles p ON p.user_id = u.id
+     WHERE LOWER(u.email) = LOWER($1)
+     LIMIT 1`,
+    [email]
+  );
+  return rows[0] || null;
+}
+
+export async function createSession({ tokenHash, userId, expiresAt }) {
+  const p = requirePostgres();
+  await ensureSchema();
+  await p.query(`DELETE FROM sessions WHERE expires_at <= NOW()`);
+  await p.query(
+    `INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`,
+    [tokenHash, userId, expiresAt]
+  );
+}
+
+export async function getSessionUser(tokenHash) {
+  const p = requirePostgres();
+  await ensureSchema();
+  const { rows } = await p.query(
+    `SELECT u.id, u.email, COALESCE(p.data, '{}'::jsonb) AS profile
+     FROM sessions s
+     JOIN users u ON u.id = s.user_id
+     LEFT JOIN user_profiles p ON p.user_id = u.id
+     WHERE s.token_hash = $1 AND s.expires_at > NOW()
+     LIMIT 1`,
+    [tokenHash]
+  );
+  return rows[0] || null;
+}
+
+export async function deleteSession(tokenHash) {
+  const p = requirePostgres();
+  await ensureSchema();
+  await p.query(`DELETE FROM sessions WHERE token_hash = $1`, [tokenHash]);
+}
+
+export async function getUserProfile(userId) {
+  const p = requirePostgres();
+  await ensureSchema();
+  const { rows } = await p.query(
+    `SELECT data FROM user_profiles WHERE user_id = $1 LIMIT 1`,
+    [userId]
+  );
+  return rows[0]?.data || {};
+}
+
+export async function saveUserProfile(userId, profile) {
+  const p = requirePostgres();
+  await ensureSchema();
+  await p.query(
+    `INSERT INTO user_profiles (user_id, data, updated_at)
+     VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (user_id)
+     DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+    [userId, JSON.stringify(profile || {})]
+  );
+  return profile || {};
+}
+
+// ── Apresentações ──────────────────────────────────────────────────────────
 
 export async function savePresentation({ id, imoveis, cliente = null, modelo = 'editorial', perfil = {}, userId = null }) {
   const p = getPool();
@@ -77,8 +214,6 @@ export async function savePresentation({ id, imoveis, cliente = null, modelo = '
     return;
   }
 
-  // Compatibilidade temporária com o Supabase antigo. Metadados ficam anexados
-  // aos próprios dados para não exigir alteração do schema antigo.
   const payloadLegado = (imoveis || []).map((item, idx) => idx === 0 && item?.ok
     ? { ...item, dados: { ...item.dados, _apresentacao: { cliente: cliente || null, modelo: modelo || 'editorial', perfil: perfil || {} } } }
     : item);
