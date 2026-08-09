@@ -49,6 +49,8 @@ export async function ensureSchema() {
       id VARCHAR(16) PRIMARY KEY,
       user_id UUID NULL,
       client_name TEXT NULL,
+      template TEXT NOT NULL DEFAULT 'editorial',
+      profile JSONB NOT NULL DEFAULT '{}'::jsonb,
       payload JSONB NOT NULL,
       votes JSONB NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -56,35 +58,51 @@ export async function ensureSchema() {
     )
   `);
 
+  // Mantém compatibilidade se a tabela tiver sido criada por uma versão anterior.
+  await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS template TEXT NOT NULL DEFAULT 'editorial'`);
+  await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}'::jsonb`);
   await p.query(`CREATE INDEX IF NOT EXISTS idx_presentations_created_at ON presentations(created_at DESC)`);
   await p.query(`CREATE INDEX IF NOT EXISTS idx_presentations_user_id ON presentations(user_id)`);
 }
 
-export async function savePresentation({ id, imoveis, cliente = null, userId = null }) {
+export async function savePresentation({ id, imoveis, cliente = null, modelo = 'editorial', perfil = {}, userId = null }) {
   const p = getPool();
   if (p) {
     await ensureSchema();
     await p.query(
-      `INSERT INTO presentations (id, user_id, client_name, payload, votes)
-       VALUES ($1, $2, $3, $4::jsonb, NULL)`,
-      [id, userId, cliente || null, JSON.stringify(imoveis)]
+      `INSERT INTO presentations (id, user_id, client_name, template, profile, payload, votes)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, NULL)`,
+      [id, userId, cliente || null, modelo || 'editorial', JSON.stringify(perfil || {}), JSON.stringify(imoveis)]
     );
     return;
   }
 
-  // Compatibilidade temporária com o Supabase antigo.
+  // Compatibilidade temporária com o Supabase antigo. Metadados ficam anexados
+  // aos próprios dados para não exigir alteração do schema antigo.
+  const payloadLegado = (imoveis || []).map((item, idx) => idx === 0 && item?.ok
+    ? { ...item, dados: { ...item.dados, _apresentacao: { cliente: cliente || null, modelo: modelo || 'editorial', perfil: perfil || {} } } }
+    : item);
+
   let r = await supa('apresentacoes', {
     method: 'POST',
-    body: JSON.stringify({ id, imoveis, votos: null, cliente: cliente || null }),
+    body: JSON.stringify({ id, imoveis: payloadLegado, votos: null, cliente: cliente || null }),
   });
   if (!r.ok) {
-    // Schema antigo pode não ter a coluna cliente.
     r = await supa('apresentacoes', {
       method: 'POST',
-      body: JSON.stringify({ id, imoveis, votos: null }),
+      body: JSON.stringify({ id, imoveis: payloadLegado, votos: null }),
     });
   }
   if (!r.ok) throw new Error(await r.text());
+}
+
+function legacyMeta(row) {
+  const meta = row?.imoveis?.find(i => i?.ok)?.dados?._apresentacao || {};
+  return {
+    cliente: row?.cliente || meta.cliente || null,
+    modelo: meta.modelo || 'editorial',
+    perfil: meta.perfil || {},
+  };
 }
 
 export async function getPresentation(id) {
@@ -92,7 +110,7 @@ export async function getPresentation(id) {
   if (p) {
     await ensureSchema();
     const { rows } = await p.query(
-      `SELECT id, user_id, client_name, payload, votes, created_at, updated_at
+      `SELECT id, user_id, client_name, template, profile, payload, votes, created_at, updated_at
        FROM presentations WHERE id = $1 LIMIT 1`,
       [id]
     );
@@ -102,6 +120,8 @@ export async function getPresentation(id) {
       id: row.id,
       user_id: row.user_id,
       cliente: row.client_name,
+      modelo: row.template || 'editorial',
+      perfil: row.profile || {},
       imoveis: row.payload,
       votos: row.votes,
       criado_em: row.created_at,
@@ -111,7 +131,9 @@ export async function getPresentation(id) {
   const r = await supa(`apresentacoes?id=eq.${encodeURIComponent(id)}`);
   if (!r.ok) return null;
   const data = await r.json();
-  return data[0] || null;
+  const row = data[0];
+  if (!row) return null;
+  return { ...row, ...legacyMeta(row) };
 }
 
 export async function listPresentations({ userId = null, limit = 100 } = {}) {
@@ -127,7 +149,7 @@ export async function listPresentations({ userId = null, limit = 100 } = {}) {
     }
     params.push(lim);
     const { rows } = await p.query(
-      `SELECT id, client_name, payload, votes, created_at
+      `SELECT id, client_name, template, profile, payload, votes, created_at
        FROM presentations ${where}
        ORDER BY created_at DESC LIMIT $${params.length}`,
       params
@@ -135,6 +157,8 @@ export async function listPresentations({ userId = null, limit = 100 } = {}) {
     return rows.map(row => ({
       id: row.id,
       cliente: row.client_name,
+      modelo: row.template || 'editorial',
+      perfil: row.profile || {},
       imoveis: row.payload,
       votos: row.votes,
       criado_em: row.created_at,
@@ -145,7 +169,8 @@ export async function listPresentations({ userId = null, limit = 100 } = {}) {
   if (!r.ok) r = await supa('apresentacoes?select=id,criado_em,imoveis,votos&order=criado_em.desc');
   if (!r.ok) r = await supa('apresentacoes?select=id,imoveis,votos');
   if (!r.ok) throw new Error(await r.text());
-  return await r.json();
+  const rows = await r.json();
+  return rows.map(row => ({ ...row, ...legacyMeta(row) }));
 }
 
 export async function saveVotes(id, votos) {
