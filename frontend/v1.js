@@ -46,10 +46,17 @@ function primeiraArea(d){
 function midiasDoImovel(d){
   const vistos = new Set();
   const fotos = (d.fotos || []).filter(Boolean).filter(url => {
-    if(vistos.has(url)) return false; vistos.add(url); return true;
+    if(vistos.has(url)) return false;
+    vistos.add(url);
+    return true;
   }).map(url => ({ url, tipo:'foto', descricao:null }));
-  const plantas = (d.plantas || []).map(p => typeof p === 'string' ? {url:p,tipo:'planta',descricao:'Planta'} : ({...p,tipo:'planta'}))
-    .filter(p => p.url && !vistos.has(p.url));
+  const plantas = (d.plantas || [])
+    .map(p => typeof p === 'string' ? {url:p,tipo:'planta',descricao:'Planta'} : ({...p,tipo:'planta'}))
+    .filter(p => {
+      if(!p.url || vistos.has(p.url)) return false;
+      vistos.add(p.url);
+      return true;
+    });
   return [...fotos, ...plantas];
 }
 
@@ -127,7 +134,10 @@ function setHero(imovelIdx, midiaIdx, posHero){
   const item = imoveisBrutos[imovelIdx]; if(!item?.ok) return;
   const m = item.selecao.pool[midiaIdx];
   if(m.tipo !== 'foto') return;
-  if(!item.selecao.ordem.includes(m.url)) item.selecao.ordem.push(m.url);
+  if(!item.selecao.ordem.includes(m.url)){
+    if(item.selecao.ordem.length >= LIMITE_VISUAIS){ alert(`Você pode selecionar até ${LIMITE_VISUAIS} visuais por imóvel.`); return; }
+    item.selecao.ordem.push(m.url);
+  }
   const heroes = [...item.selecao.heroes];
   heroes[posHero] = m.url;
   if(posHero === 0 && heroes[1] === m.url) heroes[1] = null;
@@ -151,8 +161,10 @@ function aplicarRevisao(){
     const restoFotos = fotosSel.filter(f => !heroes.includes(f.url));
     const plantasSel = selecionadas.filter(m => m.tipo === 'planta');
     const visuaisOrdenados = [...heroes.map(url => fotosSel.find(f=>f.url===url)).filter(Boolean), ...restoFotos, ...plantasSel];
-    d.fotos = visuaisOrdenados.map(m => m.url);
-    d.plantas = plantasSel.map(m => ({ id:m.id ?? null, descricao:m.descricao || 'Planta', tipo:m.tipo, url:m.url }));
+
+    // Fotos e plantas permanecem campos diferentes. A ordem mista é só de apresentação.
+    d.fotos = [...heroes.map(url => fotosSel.find(f=>f.url===url)).filter(Boolean), ...restoFotos].map(m => m.url);
+    d.plantas = plantasSel.map(m => ({ id:m.id ?? null, descricao:m.descricao || 'Planta', tipo:'planta', url:m.url }));
     d._heroes = heroes;
     d._visuais = visuaisOrdenados;
     return { ok:true, dados:d };
@@ -183,14 +195,18 @@ function paginaAbertura(ok){
 
 function paginasImovel(d){
   const plantaSet = new Set((d.plantas || []).map(p => typeof p === 'string' ? p : p.url));
-  const visuais = (d._visuais || (d.fotos || []).map(url => ({url,tipo:plantaSet.has(url)?'planta':'foto'}))).filter(Boolean);
+  const fallbackVisuais = [
+    ...(d.fotos || []).map(url => ({url,tipo:'foto'})),
+    ...(d.plantas || []).map(p => typeof p === 'string' ? ({url:p,tipo:'planta',descricao:'Planta'}) : ({...p,tipo:'planta'}))
+  ];
+  const visuais = (d._visuais || fallbackVisuais).filter(m => m && m.url);
   const heroesUrls = (d._heroes || []).slice(0,2);
-  const fotos = visuais.filter(m => m.tipo !== 'planta');
+  const fotos = visuais.filter(m => m.tipo !== 'planta' && !plantaSet.has(m.url));
   let heroes = heroesUrls.map(url => fotos.find(f=>f.url===url)).filter(Boolean);
   for(const f of fotos){ if(heroes.length>=2) break; if(!heroes.some(h=>h.url===f.url)) heroes.push(f); }
   const restantesFotos = fotos.filter(f => !heroes.some(h=>h.url===f.url));
   const pagina1Sec = restantesFotos.slice(0,6);
-  const pagina2Midias = [...restantesFotos.slice(6), ...visuais.filter(m=>m.tipo==='planta')].slice(0,4);
+  const pagina2Midias = [...restantesFotos.slice(6), ...visuais.filter(m=>m.tipo==='planta' || plantaSet.has(m.url))].slice(0,4);
   const breadcrumb = [d.bairro,d.cidade,(d.tipologias||[]).some(t=>t.preco_venda)?'Venda':null].filter(Boolean).join(' · ');
   const head = `<div class="imovel-head"><div class="crumb">${esc(breadcrumb)}</div><h2>${esc(d.titulo || 'Imóvel')}</h2><div class="end">${esc(d.codigo || '')}${d.endereco ? ` · ${esc(d.endereco)}`:''}</div></div>`;
   const heroHtml = heroes.length ? `<div class="heroes">${heroes.map(m=>`<img src="${esc(m.url)}" data-tipo="foto">`).join('')}</div>` : '';
@@ -236,7 +252,7 @@ function voltarRevisao(){ renderRevisao(); mostrarTela('revisao'); }
 async function gerarLink(){
   const btn=$('btn-link'), antigo=btn.textContent; btn.disabled=true; btn.textContent='Gerando…';
   try{
-    const r=await fetch(`${BACKEND}/api/salvar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imoveis:imoveisAtual})});
+    const r=await fetch(`${BACKEND}/api/salvar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({imoveis:imoveisAtual,cliente:nomeClienteAtual})});
     const data=await r.json(); if(!r.ok || !data.id) throw new Error(data.erro || 'Erro ao salvar.');
     if(nomeClienteAtual) setNomeApr(data.id,nomeClienteAtual);
     abrirModalLinks(`${location.origin}/ver/${data.id}`,`${location.origin}/resultado/${data.id}`);
@@ -259,7 +275,7 @@ async function abrirHistorico(){
   try{
     const r=await fetch(`${BACKEND}/api/apresentacoes`); const lista=await r.json();
     if(!Array.isArray(lista)||!lista.length){cont.innerHTML='<div class="empty-note">Nenhuma apresentação salva.</div>';return;}
-    const nomes=nomesApr(); cont.innerHTML=lista.map(a=>{const rs=a.resumo||{};return `<div class="historico-item">${rs.foto?`<img src="${esc(rs.foto)}">`:''}<div class="historico-info"><strong>${esc(nomes[a.id]||rs.titulo||'Apresentação')}</strong><small>${esc([rs.n?rs.n+' imóveis':null,rs.local,rs.preco].filter(Boolean).join(' · '))}</small></div><a class="btn btn-verde" href="/ver/${a.id}" target="_blank">Abrir</a><a class="btn btn-cobre" href="/resultado/${a.id}" target="_blank">Resultado</a></div>`}).join('');
+    const nomes=nomesApr(); cont.innerHTML=lista.map(a=>{const rs=a.resumo||{};return `<div class="historico-item">${rs.foto?`<img src="${esc(rs.foto)}">`:''}<div class="historico-info"><strong>${esc(a.cliente || nomes[a.id]||rs.titulo||'Apresentação')}</strong><small>${esc([rs.n?rs.n+' imóveis':null,rs.local,rs.preco].filter(Boolean).join(' · '))}</small></div><a class="btn btn-verde" href="/ver/${a.id}" target="_blank">Abrir</a><a class="btn btn-cobre" href="/resultado/${a.id}" target="_blank">Resultado</a></div>`}).join('');
   }catch{cont.innerHTML='<div class="empty-note">Não consegui carregar o histórico. O banco antigo pode estar indisponível.</div>';}
 }
 
