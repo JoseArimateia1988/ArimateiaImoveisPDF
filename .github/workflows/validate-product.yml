@@ -1,0 +1,30 @@
+name: Validate product branch
+
+on:
+  push:
+    branches: [produto-v1-review-pdf]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install backend dependencies
+        run: npm install
+      - name: Check backend syntax
+        run: |
+          node --check product-index.js
+          node --check db.js
+          node --check orulo.js
+          node --check scraper.js
+          node --check claude.js
+      - name: Check frontend JavaScript syntax
+        run: node --check ../frontend/v1.js
