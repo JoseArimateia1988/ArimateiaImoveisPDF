@@ -22,6 +22,7 @@ jobs:
       - name: Check backend syntax
         run: |
           node --check server.js
+          node --check pages.js
           node --check auth.js
           node --check db.js
           node --check usage.js
