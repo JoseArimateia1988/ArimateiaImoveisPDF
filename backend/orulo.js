@@ -23,7 +23,16 @@ export function isOruloUrl(url) {
   return /orulo\.com\.br/i.test(url);
 }
 
+function assertPilotEnabled() {
+  if (process.env.ORULO_SHARE_LINKS_ENABLED !== 'true') {
+    const e = new Error('Integração Órulo ainda não habilitada. Para o piloto, configure ORULO_SHARE_LINKS_ENABLED=true. Para uso comercial, use a integração oficial da Órulo.');
+    e.code = 'ORULO_OFFICIAL_INTEGRATION_REQUIRED';
+    throw e;
+  }
+}
+
 async function getCredentials(url) {
+  assertPilotEnabled();
   const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 25000 });
   const pkMatch = html.match(/var\s+publicKey\s*=\s*['"]([^'"]+)['"]/);
   const idMatch = html.match(/var\s+building_id\s*=\s*(\d+)/);
@@ -40,7 +49,7 @@ async function getCredentials(url) {
     }
   }
 
-  if (!buildingId || !pkMatch) throw new Error('Não foi possível ler credenciais do Órulo (publicKey/building_id).');
+  if (!buildingId || !pkMatch) throw new Error('Não foi possível ler os dados do link compartilhado da Órulo.');
   return { buildingId, publicKey: pkMatch[1] };
 }
 
@@ -65,6 +74,8 @@ function urlDeMidia(item) {
   return item['2280x1800'] || dimensions['2280x1800'] || item['1920x1080'] || dimensions['1920x1080'] || item['1024x1024'] || dimensions['1024x1024'] || item.url || item.image || item.src || null;
 }
 
+// Fluxo legado mantido apenas para homologação com a conta do corretor piloto.
+// O produto comercial deverá usar OAuth/credenciais oficiais da integração Órulo.
 export async function fetchOruloImovel(url) {
   const { buildingId, publicKey } = await getCredentials(url);
 
