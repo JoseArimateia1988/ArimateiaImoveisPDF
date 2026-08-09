@@ -21,7 +21,7 @@ jobs:
         run: npm install
       - name: Check backend syntax
         run: |
-          node --check product-index.js
+          node --check server.js
           node --check db.js
           node --check orulo.js
           node --check scraper.js
