@@ -10,11 +10,15 @@
   <section id="tela-login" class="tela central">
     <div class="card-login">
       <div class="marca-topo">Arimateia Imóveis</div><div class="traco"></div>
-      <div class="eyebrow">Acesso ao gerador</div>
-      <p class="muted">Entre para criar e revisar uma apresentação.</p>
-      <input id="login-senha" class="campo" type="password" placeholder="Senha">
-      <div id="login-erro" class="status erro" style="display:none">Senha incorreta.</div>
+      <div class="eyebrow">Sua conta</div>
+      <h1 style="font-size:25px;margin:6px 0 8px">Entre para criar apresentações</h1>
+      <p class="muted">Cada corretor tem seu próprio perfil, histórico e materiais.</p>
+      <input id="login-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com">
+      <input id="login-senha" class="campo" type="password" autocomplete="current-password" placeholder="Senha" style="margin-top:8px">
+      <div id="login-erro" class="status erro"></div>
       <button id="btn-login" class="btn btn-verde btn-full">Entrar</button>
+      <button id="btn-criar-conta" class="btn btn-claro btn-full">Criar minha conta</button>
+      <p class="muted" style="font-size:11px;text-align:center;margin:12px 0 0">No primeiro acesso, crie a conta com uma senha de pelo menos 8 caracteres.</p>
     </div>
   </section>
 
@@ -30,6 +34,7 @@
         <button class="btn btn-claro" onclick="abrirPerfil()">Meu perfil</button>
         <button class="btn btn-claro" onclick="abrirHistorico()">Minhas apresentações</button>
       </div>
+      <div class="conta-atual"><span id="conta-email"></span><button class="link-btn" onclick="sairConta()">Sair</button></div>
       <div id="status" class="status"></div>
     </div>
   </section>
@@ -40,8 +45,8 @@
       <div class="painel-titulo"><div><div class="eyebrow">Dados do corretor</div><h1>Como você aparece nas apresentações</h1><p class="muted">Esses dados entram no PDF e no link enviado ao cliente. Você altera uma vez e reaproveita nas próximas seleções.</p></div></div>
       <section class="perfil-card">
         <div class="perfil-grid">
-          <label>Nome<input id="perfil-nome" class="campo" placeholder="José Arimateia"></label>
-          <label>Marca / nome profissional<input id="perfil-marca" class="campo" placeholder="Arimateia Imóveis"></label>
+          <label>Nome<input id="perfil-nome" class="campo" placeholder="Seu nome"></label>
+          <label>Marca / nome profissional<input id="perfil-marca" class="campo" placeholder="Sua marca"></label>
           <label>CRECI<input id="perfil-creci" class="campo" placeholder="CRECI 000000-F"></label>
           <label>WhatsApp<input id="perfil-whatsapp" class="campo" placeholder="(11) 99999-9999"></label>
           <label>Instagram<input id="perfil-instagram" class="campo" placeholder="@usuario"></label>
@@ -54,7 +59,7 @@
           <label>Cor de destaque<input id="perfil-cor-secundaria" type="color" value="#7a4f2d"></label>
           <label class="check-label"><input id="perfil-usar-cores" type="checkbox"> Usar minhas cores nos modelos</label>
         </div>
-        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Restaurar padrão</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar perfil</button></div>
+        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Limpar personalização</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar perfil</button></div>
         <div id="perfil-status" class="status"></div>
       </section>
     </main>
