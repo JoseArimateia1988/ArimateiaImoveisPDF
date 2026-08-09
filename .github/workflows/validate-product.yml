@@ -24,6 +24,7 @@ jobs:
           node --check server.js
           node --check auth.js
           node --check db.js
+          node --check usage.js
           node --check orulo.js
           node --check scraper.js
           node --check claude.js
