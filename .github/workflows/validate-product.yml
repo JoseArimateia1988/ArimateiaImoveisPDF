@@ -2,7 +2,7 @@ name: Validate product branch
 
 on:
   push:
-    branches: [produto-v1-review-pdf]
+    branches: [produto-v1-review-pdf, busca-certa-visual]
   pull_request:
     branches: [main]
 
