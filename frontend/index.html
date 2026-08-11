@@ -3,46 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Arimateia Imóveis – Gerador de Apresentação</title>
+  <meta name="theme-color" content="#1f2e3f">
+  <title>Busca Certa | Seleções personalizadas de imóveis</title>
   <link rel="stylesheet" href="/pdf/v1.css">
+  <link rel="stylesheet" href="/pdf/busca-certa.css">
 </head>
 <body>
   <section id="tela-login" class="tela central">
     <div class="card-login">
-      <div class="marca-topo">Arimateia Imóveis</div><div class="traco"></div>
-      <div class="eyebrow">Sua conta</div>
-      <h1 style="font-size:25px;margin:6px 0 8px">Entre para criar apresentações</h1>
-      <p class="muted">Cada corretor tem seu próprio perfil, histórico e materiais.</p>
-      <input id="login-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com">
-      <input id="login-senha" class="campo" type="password" autocomplete="current-password" placeholder="Senha" style="margin-top:8px">
-      <div id="login-erro" class="status erro"></div>
-      <button id="btn-login" class="btn btn-verde btn-full">Entrar</button>
-      <button id="btn-criar-conta" class="btn btn-claro btn-full">Criar minha conta</button>
-      <p class="muted" style="font-size:11px;text-align:center;margin:12px 0 0">No primeiro acesso, crie a conta com uma senha de pelo menos 8 caracteres.</p>
+      <div class="bc-auth-head">
+        <div class="bc-brand-row"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></div>
+        <div class="bc-kicker">Para corretores de imóveis</div>
+        <h1>Apresente opções com mais contexto e menos links soltos.</h1>
+        <p>Organize seleções personalizadas, envie por link ou PDF e acompanhe o que realmente despertou o interesse de cada cliente.</p>
+      </div>
+      <div class="bc-auth-body">
+        <div class="eyebrow">Sua conta</div>
+        <h2 class="bc-serif" style="font-size:27px;font-weight:500;margin:6px 0 8px;color:#1f2e3f">Entre na Busca Certa</h2>
+        <p class="muted">Seu perfil, suas seleções e o histórico dos seus clientes ficam organizados em um só lugar.</p>
+        <input id="login-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com">
+        <input id="login-senha" class="campo" type="password" autocomplete="current-password" placeholder="Senha" style="margin-top:8px">
+        <div id="login-erro" class="status erro"></div>
+        <button id="btn-login" class="btn btn-verde btn-full">Entrar</button>
+        <button id="btn-criar-conta" class="btn btn-claro btn-full">Criar minha conta</button>
+        <p class="muted" style="font-size:11px;text-align:center;margin:12px 0 0">No primeiro acesso, crie a conta com uma senha de pelo menos 8 caracteres.</p>
+      </div>
     </div>
   </section>
 
   <section id="tela-entrada" class="tela central">
     <div class="card-entrada">
-      <div class="marca-topo">Arimateia Imóveis</div><div class="traco"></div>
-      <div class="eyebrow">Gerador de apresentação</div>
-      <h1 style="font-size:25px;margin:6px 0 8px">Cole os imóveis. Revise. Envie.</h1>
-      <p class="muted">Use links do Órulo ou outras fontes compatíveis, um por linha. Depois você escolhe as imagens, as duas fotos de destaque e o visual da apresentação.</p>
-      <textarea id="campo-urls" class="campo" placeholder="https://www.orulo.com.br/s/...&#10;https://..."></textarea>
-      <button id="btn-gerar" class="btn btn-verde btn-full">Buscar imóveis</button>
-      <div class="entrada-secundarias">
-        <button class="btn btn-claro" onclick="abrirPerfil()">Meu perfil</button>
-        <button class="btn btn-claro" onclick="abrirHistorico()">Minhas apresentações</button>
+      <div class="bc-auth-head">
+        <div class="bc-brand-row"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></div>
+        <div class="bc-kicker">Nova seleção</div>
+        <h1>Uma busca mais organizada para o cliente. Uma apresentação mais profissional para você.</h1>
+        <p>Cole os links dos imóveis que você selecionou. A Busca Certa organiza o material para você revisar, personalizar e compartilhar.</p>
       </div>
-      <div class="conta-atual"><span id="conta-email"></span><button class="link-btn" onclick="sairConta()">Sair</button></div>
-      <div id="status" class="status"></div>
+      <div class="bc-auth-body">
+        <div class="eyebrow">Comece pelos imóveis</div>
+        <h2 class="bc-serif" style="font-size:28px;font-weight:500;margin:6px 0 8px;color:#1f2e3f">Cole os links. Revise. Envie.</h2>
+        <p class="muted">Use links do Órulo ou outras fontes compatíveis, um por linha. Depois escolha imagens, fotos de destaque e o modelo visual da seleção.</p>
+        <textarea id="campo-urls" class="campo" placeholder="https://www.orulo.com.br/s/...&#10;https://..."></textarea>
+        <button id="btn-gerar" class="btn btn-verde btn-full">Buscar imóveis</button>
+        <div class="entrada-secundarias">
+          <button class="btn btn-claro" onclick="abrirPerfil()">Minha marca</button>
+          <button class="btn btn-claro" onclick="abrirHistorico()">Minhas seleções</button>
+        </div>
+        <div class="conta-atual"><span id="conta-email"></span><button class="link-btn" onclick="sairConta()">Sair</button></div>
+        <div id="status" class="status"></div>
+      </div>
     </div>
   </section>
 
   <section id="tela-perfil" class="tela">
-    <div class="topbar no-print"><strong>Meu perfil</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
+    <div class="topbar no-print"><strong>Busca Certa · Minha marca</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
     <main class="wrap perfil-wrap">
-      <div class="painel-titulo"><div><div class="eyebrow">Dados do corretor</div><h1>Como você aparece nas apresentações</h1><p class="muted">Esses dados entram no PDF e no link enviado ao cliente. Você altera uma vez e reaproveita nas próximas seleções.</p></div></div>
+      <div class="painel-titulo"><div><div class="eyebrow">Sua identidade</div><h1>Faça cada seleção ter a sua cara.</h1><p class="muted">Nome, marca, CRECI e contatos aparecem no PDF e no link enviado ao cliente. Configure uma vez e reaproveite nas próximas seleções.</p></div></div>
       <section class="perfil-card">
         <div class="perfil-grid">
           <label>Nome<input id="perfil-nome" class="campo" placeholder="Seu nome"></label>
@@ -55,46 +71,46 @@
           <label>URL do logo<input id="perfil-logo" class="campo" placeholder="https://..."></label>
         </div>
         <div class="cores-grid">
-          <label>Cor principal<input id="perfil-cor-principal" type="color" value="#243b2a"></label>
-          <label>Cor de destaque<input id="perfil-cor-secundaria" type="color" value="#7a4f2d"></label>
-          <label class="check-label"><input id="perfil-usar-cores" type="checkbox"> Usar minhas cores nos modelos</label>
+          <label>Cor principal<input id="perfil-cor-principal" type="color" value="#1f2e3f"></label>
+          <label>Cor de destaque<input id="perfil-cor-secundaria" type="color" value="#c25b3a"></label>
+          <label class="check-label"><input id="perfil-usar-cores" type="checkbox"> Aplicar minhas cores aos modelos</label>
         </div>
-        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Limpar personalização</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar perfil</button></div>
+        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Limpar personalização</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar minha marca</button></div>
         <div id="perfil-status" class="status"></div>
       </section>
     </main>
   </section>
 
   <section id="tela-revisao" class="tela">
-    <div class="topbar no-print"><strong>Revisão da apresentação</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Links</button></div></div>
+    <div class="topbar no-print"><strong>Busca Certa · Revisão</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Links</button></div></div>
     <main class="wrap">
       <div class="painel-titulo">
-        <div><div class="eyebrow">Antes de gerar</div><h1>Escolha o que entra</h1><p class="muted">Até 12 visuais por imóvel, com 2 fotos hero. Plantas aparecem separadas quando a origem disponibiliza.</p></div>
-        <div style="min-width:260px"><label class="eyebrow" for="nome-cliente">Seleção preparada para</label><input id="nome-cliente" class="campo" placeholder="Nome do cliente (opcional)" style="margin-top:5px"></div>
+        <div><div class="eyebrow">Antes de compartilhar</div><h1>Deixe a seleção do jeito certo.</h1><p class="muted">Revise os imóveis, escolha até 12 visuais por imóvel e defina as duas imagens de destaque. Plantas ficam separadas quando a origem disponibiliza.</p></div>
+        <div style="min-width:280px"><label class="eyebrow" for="nome-cliente">Preparada especialmente para</label><input id="nome-cliente" class="campo" placeholder="Nome do cliente" style="margin-top:5px"></div>
       </div>
 
       <section class="modelos-bloco">
-        <div class="modelos-head"><div><div class="eyebrow">Visual da apresentação</div><h2>Escolha um modelo</h2></div><span class="muted">A informação é a mesma. O que muda é a direção visual.</span></div>
+        <div class="modelos-head"><div><div class="eyebrow">Direção visual</div><h2>Escolha como apresentar</h2></div><span class="muted">A estrutura é a mesma. Cores, contraste e presença visual mudam.</span></div>
         <div class="modelos-grid">
-          <button class="modelo-card" data-modelo="editorial" onclick="setModelo('editorial')"><span class="modelo-preview preview-editorial"><i></i><b></b><b></b></span><strong>Editorial</strong><small>Fotográfico, sofisticado e com mais presença de imagem.</small></button>
-          <button class="modelo-card" data-modelo="clean" onclick="setModelo('clean')"><span class="modelo-preview preview-clean"><i></i><b></b><b></b></span><strong>Clean</strong><small>Claro, organizado e fácil de comparar.</small></button>
-          <button class="modelo-card" data-modelo="bold" onclick="setModelo('bold')"><span class="modelo-preview preview-bold"><i></i><b></b><b></b></span><strong>Bold</strong><small>Mais gráfico e com marca pessoal em evidência.</small></button>
-          <button class="modelo-card" data-modelo="minimal" onclick="setModelo('minimal')"><span class="modelo-preview preview-minimal"><i></i><b></b><b></b></span><strong>Minimal</strong><small>Mais silencioso, premium e com bastante respiro.</small></button>
+          <button class="modelo-card" data-modelo="editorial" onclick="setModelo('editorial')"><span class="modelo-preview preview-editorial"><i></i><b></b><b></b></span><strong>Bordeaux</strong><small>Profundo, editorial e sofisticado. Bordeaux, verde hunter, sálvia e bone.</small><span class="bc-model-tag">Direção 01</span></button>
+          <button class="modelo-card" data-modelo="clean" onclick="setModelo('clean')"><span class="modelo-preview preview-clean"><i></i><b></b><b></b></span><strong>Arquitetônico</strong><small>Claro, preciso e contemporâneo. Areia, azul profundo, oliva e terracota.</small><span class="bc-model-tag">Direção 02</span></button>
+          <button class="modelo-card" data-modelo="bold" onclick="setModelo('bold')"><span class="modelo-preview preview-bold"><i></i><b></b><b></b></span><strong>Expressivo</strong><small>Quente, marcante e premium. Pêssego, laranja, verde profundo e café.</small><span class="bc-model-tag">Direção 03</span></button>
+          <button class="modelo-card" data-modelo="minimal" onclick="setModelo('minimal')"><span class="modelo-preview preview-minimal"><i></i><b></b><b></b></span><strong>Sálvia</strong><small>Leve, acolhedor e refinado. Creme, rosé queimado, sálvia e terracota.</small><span class="bc-model-tag">Direção 04</span></button>
         </div>
       </section>
 
       <div id="lista-revisao"></div>
-      <div class="revisao-rodape no-print"><button class="btn btn-claro" onclick="voltarInicio()">Voltar</button><button id="btn-aplicar" class="btn btn-verde">Ver apresentação</button></div>
+      <div class="revisao-rodape no-print"><button class="btn btn-claro" onclick="voltarInicio()">Voltar</button><button id="btn-aplicar" class="btn btn-verde">Ver seleção pronta</button></div>
     </main>
   </section>
 
   <section id="tela-historico" class="tela">
-    <div class="topbar no-print"><strong>Minhas apresentações</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
-    <main class="wrap"><div class="painel-titulo"><div><div class="eyebrow">Histórico</div><h1>Apresentações salvas</h1></div></div><div id="lista-historico"></div></main>
+    <div class="topbar no-print"><strong>Busca Certa · Minhas seleções</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
+    <main class="wrap"><div class="painel-titulo"><div><div class="eyebrow">Histórico</div><h1>Seleções já preparadas</h1><p class="muted">Retome materiais enviados e acompanhe o histórico de cada cliente.</p></div></div><div id="lista-historico"></div></main>
   </section>
 
   <section id="tela-resultado" class="tela">
-    <div class="topbar no-print"><strong>Prévia da apresentação</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarRevisao()">← Revisar</button><button id="btn-link" class="btn btn-claro" onclick="gerarLink()">Compartilhar link</button><button id="btn-pdf" class="btn btn-cobre" onclick="baixarPDF()">Baixar PDF</button></div></div>
+    <div class="topbar no-print"><strong>Busca Certa · Prévia</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarRevisao()">← Revisar</button><button id="btn-link" class="btn btn-claro" onclick="gerarLink()">Compartilhar link</button><button id="btn-pdf" class="btn btn-cobre" onclick="baixarPDF()">Baixar PDF</button></div></div>
     <div id="documento" class="modelo-editorial"></div>
   </section>
 
