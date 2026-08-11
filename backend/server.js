@@ -16,7 +16,7 @@ const frontendDir = path.join(__dirname, '../frontend');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const MODELOS = new Set(['editorial', 'clean', 'bold', 'minimal']);
-const PERFIL_PADRAO = { marca:'', nome:'', creci:'', whatsapp:'', instagram:'', email:'', foto:'', logo:'', corPrincipal:'#243b2a', corSecundaria:'#7a4f2d', usarCores:false };
+const PERFIL_PADRAO = { marca:'', nome:'', creci:'', whatsapp:'', instagram:'', email:'', foto:'', logo:'', corPrincipal:'#1f2e3f', corSecundaria:'#c25b3a', usarCores:false };
 
 app.disable('x-powered-by');
 app.use(express.json({ limit:'4mb' }));
@@ -25,17 +25,17 @@ function safeProfile(raw={}){
   const p={...PERFIL_PADRAO,...(raw||{})};
   const text=(v,max=180)=>String(v||'').trim().slice(0,max);
   const color=(v,fallback)=>/^#[0-9a-f]{6}$/i.test(String(v||''))?String(v):fallback;
-  return { marca:text(p.marca),nome:text(p.nome),creci:text(p.creci),whatsapp:text(p.whatsapp),instagram:text(p.instagram),email:text(p.email),foto:/^https?:\/\//i.test(p.foto||'')?text(p.foto,1200):'',logo:/^https?:\/\//i.test(p.logo||'')?text(p.logo,1200):'',corPrincipal:color(p.corPrincipal,'#243b2a'),corSecundaria:color(p.corSecundaria,'#7a4f2d'),usarCores:!!p.usarCores };
+  return { marca:text(p.marca),nome:text(p.nome),creci:text(p.creci),whatsapp:text(p.whatsapp),instagram:text(p.instagram),email:text(p.email),foto:/^https?:\/\//i.test(p.foto||'')?text(p.foto,1200):'',logo:/^https?:\/\//i.test(p.logo||'')?text(p.logo,1200):'',corPrincipal:color(p.corPrincipal,'#1f2e3f'),corSecundaria:color(p.corSecundaria,'#c25b3a'),usarCores:!!p.usarCores };
 }
 registerAuthRoutes(app,{sanitizeProfile:safeProfile});
 
 function privateHost(hostname){const h=String(hostname||'').toLowerCase();if(!h||h==='localhost'||h==='::1'||h.endsWith('.local'))return true;if(/^(127|10|0)\./.test(h)||/^192\.168\./.test(h)||/^169\.254\./.test(h))return true;const m=h.match(/^172\.(\d+)\./);return!!(m&&Number(m[1])>=16&&Number(m[1])<=31)}
 app.get('/img',async(req,res)=>{try{const u=new URL(String(req.query.u||''));if(!['http:','https:'].includes(u.protocol)||privateHost(u.hostname))return res.status(400).end();const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0'},signal:AbortSignal.timeout(20000)});if(!r.ok)return res.status(502).end();const type=r.headers.get('content-type')||'';if(!type.startsWith('image/'))return res.status(415).end();res.set('Content-Type',type);res.set('Cache-Control','public, max-age=86400');res.end(Buffer.from(await r.arrayBuffer()))}catch{res.status(502).end()}});
 
-// O produto serve somente os três arquivos da interface nova. O CRM antigo continua
-// no repositório como histórico, mas não é exposto pela aplicação da v1.
+// A v1 expõe apenas os assets explícitos da interface do produto.
 app.get(['/pdf','/pdf/'],(_,res)=>res.sendFile(path.join(frontendDir,'index.html')));
 app.get('/pdf/v1.css',(_,res)=>res.sendFile(path.join(frontendDir,'v1.css')));
+app.get('/pdf/busca-certa.css',(_,res)=>res.sendFile(path.join(frontendDir,'busca-certa.css')));
 app.get('/pdf/v1.js',(_,res)=>res.sendFile(path.join(frontendDir,'v1.js')));
 app.get('/',(_,res)=>res.redirect('/pdf'));
 
@@ -54,9 +54,9 @@ app.post('/api/salvar',requireUser,async(req,res)=>{const{imoveis,cliente,modelo
 function resumo(imoveis){const ok=(imoveis||[]).filter(i=>i?.ok).map(i=>i.dados),d=ok[0]||{};return{n:ok.length,titulo:d.titulo||null,foto:(d.fotos||[]).find(Boolean)||null,local:[d.bairro,d.cidade].filter(Boolean).join(' · ')||null,preco:d.preco_venda||d.preco_aluguel||(d.tipologias||[]).map(t=>t.preco_venda||t.preco_aluguel).find(Boolean)||null}}
 app.get('/api/apresentacoes',requireUser,async(req,res)=>{try{const rows=await listPresentations({userId:req.user.id,limit:150});res.json(rows.map(r=>({id:r.id,cliente:r.cliente||null,modelo:r.modelo||'editorial',criado_em:r.criado_em||null,resumo:resumo(r.imoveis||[])})))}catch(e){console.error('Erro ao listar apresentações:',e.message);res.status(500).json({erro:'Não foi possível carregar o histórico.'})}});
 
-app.get('/ver/:id',async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada)return res.status(404).send(errorPage('Apresentação não encontrada.'));res.send(clientPage(entrada))}catch(e){console.error('Erro ao abrir apresentação:',e.message);res.status(500).send(errorPage('Erro ao carregar apresentação.'))}});
+app.get('/ver/:id',async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada)return res.status(404).send(errorPage('Seleção não encontrada.'));res.send(clientPage(entrada))}catch(e){console.error('Erro ao abrir seleção:',e.message);res.status(500).send(errorPage('Erro ao carregar seleção.'))}});
 app.post('/api/votar/:id',async(req,res)=>{const votos=req.body?.votos;if(!votos||typeof votos!=='object'||Array.isArray(votos))return res.status(400).json({erro:'Avaliação inválida.'});const keys=Object.keys(votos);if(keys.length>100||keys.some(k=>!['like','dislike'].includes(votos[k])))return res.status(400).json({erro:'Avaliação inválida.'});try{await saveVotes(req.params.id,votos);res.json({ok:true})}catch(e){console.error('Erro ao salvar avaliação:',e.message);res.status(e?.code==='VOTES_ALREADY_SENT'?409:500).json({erro:e?.code==='VOTES_ALREADY_SENT'?'Esta avaliação já foi enviada.':'Erro ao salvar avaliação.'})}});
 app.get('/resultado/:id',requireUser,async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada||entrada.user_id!==req.user.id)return res.status(404).send(errorPage('Resultado não encontrado.'));res.send(resultPage(entrada))}catch(e){console.error('Erro ao carregar resultado:',e.message);res.status(500).send(errorPage('Erro ao carregar resultado.'))}});
 
 ensureSchema().catch(e=>console.warn('Banco não inicializado:',e.message));
-app.listen(PORT,()=>console.log(`Servidor rodando na porta ${PORT} · banco: ${databaseMode()}`));
+app.listen(PORT,()=>console.log(`Busca Certa rodando na porta ${PORT} · banco: ${databaseMode()}`));
