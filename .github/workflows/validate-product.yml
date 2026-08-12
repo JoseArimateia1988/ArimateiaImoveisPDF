@@ -43,6 +43,7 @@ jobs:
           node --check server.js
           node --check pages.js
           node --check pages-v2.js
+          node --check client-v2.js
           node --check result-v2.js
           node --check auth.js
           node --check db.js
