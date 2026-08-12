@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#233126">
+  <meta name="description" content="Busca Certa ajuda corretores a criar seleções personalizadas de imóveis, enviar por link ou PDF e acompanhar o retorno de cada cliente.">
+  <title>Busca Certa | Seleções de imóveis para cada cliente</title>
+  <style>
+    :root{--green:#233126;--sage:#6f7a61;--terracotta:#c46b57;--cream:#fbf7f2;--sand:#eee8e2;--ink:#2b2c2a;--line:#d8d0c7;--paper:#fffdf9}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif}a{text-decoration:none;color:inherit}
+    .shell{width:min(1120px,calc(100% - 32px));margin:auto}.nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}.brand{display:flex;align-items:center;gap:10px;font-family:Georgia,serif;font-size:20px;color:var(--green)}.mark{width:34px;height:34px;border:1px solid var(--line);border-radius:11px 11px 11px 3px;display:grid;place-items:center;color:var(--terracotta);font-size:10px}.nav-links{display:flex;gap:10px;align-items:center}.nav-link{font-size:12px;color:#6f7472}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:12px;padding:0 18px;font-size:13px;font-weight:850;border:1px solid transparent}.btn-primary{background:var(--green);color:#fff}.btn-light{background:#fff;border-color:var(--line);color:var(--green)}
+    .hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(330px,.85fr);border-radius:28px;overflow:hidden;box-shadow:0 24px 60px rgba(35,49,38,.12);margin:8px 0 54px}.hero-main{background:var(--green);color:#fff;padding:56px 52px;position:relative;overflow:hidden}.hero-main:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 10px),linear-gradient(135deg,rgba(255,255,255,.04),transparent 45%)}.hero-main:after{content:"";position:absolute;width:300px;height:300px;border:1px solid rgba(255,255,255,.13);border-radius:50%;right:-110px;top:-110px}.hero-content{position:relative;z-index:1}.ey{font-size:10px;text-transform:uppercase;letter-spacing:.14em;font-weight:900;color:var(--terracotta)}h1,h2,h3{font-family:Georgia,serif;font-weight:500;letter-spacing:-.025em}.hero h1{font-size:clamp(42px,6vw,68px);line-height:.98;margin:10px 0 18px;max-width:760px}.hero p{font-size:17px;line-height:1.62;color:rgba(255,255,255,.72);max-width:680px;margin:0 0 26px}.hero-actions{display:flex;gap:10px;flex-wrap:wrap}.hero-side{background:var(--paper);padding:36px;display:flex;flex-direction:column;justify-content:center}.hero-side h3{font-size:29px;color:var(--green);margin:0 0 14px}.hero-side p{color:#6f7472;font-size:14px;line-height:1.6;margin:0 0 20px}.mini-card{border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:10px;background:#fff}.mini-card small{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#8a8e8a;margin-bottom:5px}.mini-card strong{display:block;color:var(--green);font-size:15px}
+    section{margin:58px 0}.section-head{max-width:740px;margin-bottom:26px}.section-head h2{font-size:38px;color:var(--green);margin:7px 0 10px}.section-head p{font-size:15px;line-height:1.65;color:#6f7472;margin:0}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.feature{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px}.feature b{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:999px;background:var(--sand);color:var(--green);font-size:12px;margin-bottom:18px}.feature h3{font-size:23px;color:var(--green);margin:0 0 8px}.feature p{font-size:13px;line-height:1.6;color:#727776;margin:0}
+    .why{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}.why-copy{background:var(--sand);border-radius:22px;padding:30px}.why-copy h2{font-size:36px;color:var(--green);margin:7px 0 14px}.why-copy p{font-size:15px;line-height:1.65;color:#68706c}.why-points{display:grid;gap:10px}.why-point{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}.why-point strong{display:block;color:var(--green);font-size:14px;margin-bottom:4px}.why-point span{font-size:12px;line-height:1.5;color:#747a77}
+    .price{background:var(--green);color:#fff;border-radius:24px;padding:34px;display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;position:relative;overflow:hidden}.price:after{content:"";position:absolute;width:250px;height:250px;border:1px solid rgba(255,255,255,.12);border-radius:50%;right:-80px;bottom:-110px}.price h2{font-size:38px;margin:6px 0 10px}.price p{color:rgba(255,255,255,.68);line-height:1.6;font-size:14px}.plan-box{position:relative;z-index:1;background:var(--paper);color:var(--ink);border-radius:18px;padding:24px}.billing{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bill{border:1px solid var(--line);border-radius:14px;padding:16px}.bill.featured{border-color:var(--terracotta);box-shadow:inset 0 0 0 1px var(--terracotta)}.bill small{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#818683}.bill strong{display:block;font-family:Georgia,serif;color:var(--green);font-size:28px;margin:4px 0 2px}.bill span{font-size:11px;color:#747977}.included{margin:16px 0 18px;font-size:12px;line-height:1.8;color:#676d69}.included b{color:var(--green)}
+    .faq{display:grid;grid-template-columns:1fr 1fr;gap:12px}.faq-item{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px}.faq-item strong{display:block;color:var(--green);font-size:14px;margin-bottom:6px}.faq-item p{font-size:12px;line-height:1.55;color:#747a77;margin:0}.footer{border-top:1px solid var(--line);padding:26px 0 36px;display:flex;justify-content:space-between;gap:16px;font-size:11px;color:#777c79}
+    @media(max-width:850px){.hero,.why,.price{grid-template-columns:1fr}.grid3{grid-template-columns:1fr}.faq{grid-template-columns:1fr}.hero-main{padding:42px 28px}.hero-side{padding:26px}.price{padding:26px}.nav-link{display:none}}
+    @media(max-width:520px){.shell{width:min(100% - 20px,1120px)}.nav{padding:14px 0}.brand{font-size:18px}.hero{border-radius:20px;margin-top:0}.hero-main{padding:32px 22px}.hero h1{font-size:42px}.hero p{font-size:15px}.hero-side{padding:22px}.section-head h2,.why-copy h2,.price h2{font-size:32px}.billing{grid-template-columns:1fr}.footer{flex-direction:column}.nav .btn{padding:0 13px}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="nav">
+      <a class="brand" href="/"><span class="mark">BC</span>Busca Certa</a>
+      <div class="nav-links"><a class="nav-link" href="#como-funciona">Como funciona</a><a class="nav-link" href="#plano">Plano</a><a class="btn btn-light" href="/pdf">Entrar</a></div>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-main"><div class="hero-content"><div class="ey">Para corretores de imóveis</div><h1>Transforme sua curadoria em uma seleção feita para cada cliente.</h1><p>Pare de mandar uma sequência de links soltos. Com a Busca Certa, você reúne os imóveis que escolheu, apresenta tudo com sua identidade e entende quais opções realmente fizeram sentido para o cliente.</p><div class="hero-actions"><a class="btn btn-primary" style="background:var(--terracotta)" href="/pdf">Criar minha seleção</a><a class="btn btn-light" href="#como-funciona">Ver como funciona</a></div></div></div>
+      <aside class="hero-side"><div class="ey">Uma experiência mais consultiva</div><h3>Não é só uma apresentação bonita.</h3><p>O cliente recebe uma seleção organizada, avalia os imóveis e devolve sinais claros do que gostou e do que não combina com a busca.</p><div class="mini-card"><small>Cliente</small><strong>Gostei / Não é pra mim</strong></div><div class="mini-card"><small>Corretor</small><strong>Painel para acompanhar o retorno</strong></div></aside>
+    </section>
+
+    <section id="como-funciona">
+      <div class="section-head"><div class="ey">Como funciona</div><h2>Da curadoria ao retorno do cliente em três passos.</h2></div>
+      <div class="grid3">
+        <article class="feature"><b>1</b><h3>Monte a seleção</h3><p>Adicione os imóveis que fazem sentido para aquele cliente. A Busca Certa organiza fotos, plantas, valores, tipologias e informações do empreendimento.</p></article>
+        <article class="feature"><b>2</b><h3>Personalize para cada busca</h3><p>Escolha o visual, aplique sua identidade profissional e envie uma página pensada para aquele cliente, por link ou PDF.</p></article>
+        <article class="feature"><b>3</b><h3>Entenda o que fez sentido</h3><p>O cliente marca o que gostou e o que não é para ele. Você acompanha tudo no painel e usa o retorno para refinar a próxima seleção.</p></article>
+      </div>
+    </section>
+
+    <section class="why">
+      <div class="why-copy"><div class="ey">Por que usar</div><h2>Menos link perdido. Mais contexto para vender melhor.</h2><p>A Busca Certa ajuda o corretor a sair do envio desorganizado de anúncios e transformar a busca em um atendimento mais claro, profissional e personalizado.</p></div>
+      <div class="why-points"><div class="why-point"><strong>Apresentação com a sua marca</strong><span>Nome, contatos, identidade visual e uma seleção com cara de atendimento, não de lista de links.</span></div><div class="why-point"><strong>Personalização de verdade</strong><span>Cada cliente recebe uma seleção própria, com os imóveis escolhidos para aquela busca.</span></div><div class="why-point"><strong>Feedback que ajuda a decidir o próximo passo</strong><span>Você vê o que despertou interesse, o que foi descartado e o que ainda está sem avaliação.</span></div></div>
+    </section>
+
+    <section id="plano" class="price">
+      <div><div class="ey">Plano único</div><h2>Tudo que você precisa para apresentar imóveis melhor.</h2><p>Seleções personalizadas, link para o cliente, PDF, identidade do corretor, até 12 visuais por imóvel, plantas, modelos visuais, avaliação do cliente e painel de acompanhamento.</p></div>
+      <div class="plan-box"><div class="billing"><div class="bill"><small>Mensal</small><strong>R$ 29,90</strong><span>por mês</span></div><div class="bill featured"><small>Anual</small><strong>R$ 23,90</strong><span>por mês · R$ 286,80/ano</span></div></div><div class="included"><b>Inclui:</b> seleções personalizadas · link e PDF · identidade profissional · feedback do cliente · painel do corretor · histórico das seleções.</div><a class="btn btn-primary" style="width:100%" href="/pdf">Começar a usar</a></div>
+    </section>
+
+    <section>
+      <div class="section-head"><div class="ey">Dúvidas rápidas</div><h2>O essencial, sem letra miúda criativa.</h2></div>
+      <div class="faq"><div class="faq-item"><strong>Preciso cadastrar os imóveis manualmente?</strong><p>Não. Você começa pelos links das fontes compatíveis e revisa o material antes de gerar a seleção.</p></div><div class="faq-item"><strong>O cliente precisa criar conta?</strong><p>Não. Ele acessa a seleção pelo link, avalia os imóveis e envia o retorno.</p></div><div class="faq-item"><strong>Consigo enviar pelo WhatsApp?</strong><p>Sim. A seleção pode ser compartilhada por link e também em PDF.</p></div><div class="faq-item"><strong>Consigo acompanhar o que o cliente gostou?</strong><p>Sim. O painel do corretor separa os imóveis por interesse e mostra quais ainda não foram avaliados.</p></div></div>
+    </section>
+
+    <footer class="footer"><span>Busca Certa · seleções personalizadas de imóveis</span><span>Um produto Mood Labs</span></footer>
+  </div>
+</body>
+</html>
