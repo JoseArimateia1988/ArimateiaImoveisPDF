@@ -70,7 +70,17 @@ app.get('/api/apresentacoes',requireUser,async(req,res)=>{try{const rows=await l
 
 app.get('/ver/:id',async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada)return res.status(404).send(errorPage('Seleção não encontrada.'));res.send(clientPage(entrada))}catch(e){console.error('Erro ao abrir seleção:',e.message);res.status(500).send(errorPage('Erro ao carregar seleção.'))}});
 app.post('/api/votar/:id',async(req,res)=>{const votos=req.body?.votos;if(!votos||typeof votos!=='object'||Array.isArray(votos))return res.status(400).json({erro:'Avaliação inválida.'});const keys=Object.keys(votos);if(keys.length>100||keys.some(k=>!['like','dislike'].includes(votos[k])))return res.status(400).json({erro:'Avaliação inválida.'});try{await saveVotes(req.params.id,votos);res.json({ok:true})}catch(e){console.error('Erro ao salvar avaliação:',e.message);res.status(e?.code==='VOTES_ALREADY_SENT'?409:500).json({erro:e?.code==='VOTES_ALREADY_SENT'?'Esta avaliação já foi enviada.':'Erro ao salvar avaliação.'})}});
-app.get('/resultado/:id',requireUser,async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada||entrada.user_id!==req.user.id)return res.status(404).send(errorPage('Resultado não encontrado.'));res.send(resultPage(entrada))}catch(e){console.error('Erro ao carregar resultado:',e.message);res.status(500).send(errorPage('Erro ao carregar resultado.'))}});
+app.get('/resultado/:id',requireUser,async(req,res)=>{
+  try{
+    const entrada=await getPresentation(req.params.id);
+    if(!entrada||entrada.user_id!==req.user.id)return res.status(404).send(errorPage('Resultado não encontrado.'));
+    const atual=safeProfile(req.user.profile||{});
+    let html=resultPage({...entrada,perfil:{...(entrada.perfil||{}),...atual}});
+    const nav='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px"><a href="/pdf" style="display:inline-block;background:#1f2e3f;color:#fff;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:800;font-size:12px">← Voltar ao painel</a><a href="/pdf" style="display:inline-block;background:#c25b3a;color:#fff;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:800;font-size:12px">+ Criar nova seleção</a></div>';
+    html=html.replace('<div class="body">','<div class="body">'+nav);
+    res.send(html);
+  }catch(e){console.error('Erro ao carregar resultado:',e.message);res.status(500).send(errorPage('Erro ao carregar resultado.'))}
+});
 
 ensureSchema().catch(e=>console.warn('Banco não inicializado:',e.message));
 app.listen(PORT,()=>console.log(`Busca Certa rodando na porta ${PORT} · banco: ${databaseMode()}`));
