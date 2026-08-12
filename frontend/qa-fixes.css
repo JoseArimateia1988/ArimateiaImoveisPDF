@@ -1,0 +1,43 @@
+/* Ajustes de homologação: preview legível no navegador sem alterar o A4 impresso */
+@media screen and (max-width: 760px){
+  #tela-resultado .topbar{align-items:flex-start;padding:10px 12px;gap:8px}
+  #tela-resultado .topbar strong{font-size:10px;line-height:1.25;padding-top:6px}
+  #tela-resultado .acoes{justify-content:flex-end;gap:5px}
+  #tela-resultado .acoes .btn{padding:7px 8px;font-size:9.5px}
+  #documento{width:100%;margin:0;background:#fff;box-shadow:none;overflow:hidden}
+  #documento .pagina{width:100%;min-height:0;height:auto;padding:22px 14px 58px;overflow:visible;page-break-after:auto;border-bottom:10px solid #e8e3da}
+  #documento .pagina-barra{height:3px}
+  #documento .rodape-pdf{position:static;margin-top:22px;padding-top:12px;display:flex;flex-direction:column;left:auto;right:auto;bottom:auto;font-size:9px}
+  #documento .abertura-head{display:block;margin-bottom:18px}
+  #documento .abertura-head h1{font-size:28px}
+  #documento .abertura-meta{text-align:left;margin-top:14px;font-size:8.5px;line-height:1.6}
+  #documento .corretor-box{margin-top:12px}
+  #documento .comparativo{font-size:9px;display:block;overflow-x:auto;white-space:nowrap}
+  #documento .imovel-head{margin:-22px -14px 18px;padding:28px 14px 18px}
+  #documento .imovel-head h2{font-size:25px;max-width:none!important}
+  #documento .tipos{overflow-x:auto;margin-bottom:16px}
+  #documento .tipos table{min-width:520px}
+  #documento .heroes{grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px}
+  #documento .heroes img{height:42vw;min-height:145px;border-radius:0!important}
+  #documento .fotos6{grid-template-columns:repeat(3,1fr);gap:5px}
+  #documento .fotos6 img{height:31vw;min-height:100px;border-radius:0!important}
+  #documento .pagina2-grid{grid-template-columns:1fr 1fr;gap:7px}
+  #documento .pagina2-grid img{height:46vw;min-height:170px}
+  #documento .descricao-pdf{font-size:12px;line-height:1.6}
+  #documento .tag-pdf{font-size:8px;padding:4px 6px}
+  .painel-titulo{align-items:stretch;flex-direction:column}
+  .painel-titulo>div[style]{min-width:0!important}
+  .modelos-grid{grid-template-columns:1fr 1fr}
+  .midias-grid{grid-template-columns:repeat(3,1fr)}
+  .revisao-head{flex-direction:column}
+  .contador{white-space:normal}
+  .revisao-help{align-items:flex-start;flex-direction:column}
+  .perfil-grid{grid-template-columns:1fr}
+}
+@media screen and (max-width:420px){
+  #documento .heroes{grid-template-columns:1fr 1fr}
+  #documento .fotos6{grid-template-columns:repeat(2,1fr)}
+  #documento .fotos6 img{height:42vw}
+  #documento .pagina2-grid{grid-template-columns:1fr}
+  #documento .pagina2-grid img{height:auto;max-height:420px;object-fit:contain;background:#fff}
+}
