@@ -10,7 +10,8 @@ import { isOruloUrl, fetchOruloImovel } from './orulo.js';
 import { databaseMode, ensureSchema, savePresentation, getPresentation, listPresentations, saveVotes } from './db.js';
 import { registerAuthRoutes, requireUser } from './auth.js';
 import { recordUsage, usageSummary } from './usage.js';
-import { clientPage, errorPage, resultPage } from './pages-v2.js';
+import { clientPage, errorPage } from './pages-v2.js';
+import { resultPageV2 } from './result-v2.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.join(__dirname, '../frontend');
@@ -75,10 +76,7 @@ app.get('/resultado/:id',requireUser,async(req,res)=>{
     const entrada=await getPresentation(req.params.id);
     if(!entrada||entrada.user_id!==req.user.id)return res.status(404).send(errorPage('Resultado não encontrado.'));
     const atual=safeProfile(req.user.profile||{});
-    let html=resultPage({...entrada,perfil:{...(entrada.perfil||{}),...atual}});
-    const nav='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px"><a href="/pdf" style="display:inline-block;background:#1f2e3f;color:#fff;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:800;font-size:12px">← Voltar ao painel</a><a href="/pdf" style="display:inline-block;background:#c25b3a;color:#fff;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:800;font-size:12px">+ Criar nova seleção</a></div>';
-    html=html.replace('<div class="body">','<div class="body">'+nav);
-    res.send(html);
+    res.send(resultPageV2({...entrada,perfil:{...(entrada.perfil||{}),...atual}}));
   }catch(e){console.error('Erro ao carregar resultado:',e.message);res.status(500).send(errorPage('Erro ao carregar resultado.'))}
 });
 
