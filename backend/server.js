@@ -11,7 +11,7 @@ import { databaseMode, ensureSchema, savePresentation, getPresentation, listPres
 import { registerAuthRoutes, requireUser } from './auth.js';
 import { recordUsage, usageSummary } from './usage.js';
 import { errorPage } from './pages-v2.js';
-import { clientPageV2 } from './client-v2.js';
+import { clientPageV3 } from './client-v3.js';
 import { resultPageV2 } from './result-v2.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,7 +70,7 @@ app.post('/api/salvar',requireUser,requireNamedProfile,async(req,res)=>{const{im
 function resumo(imoveis){const ok=(imoveis||[]).filter(i=>i?.ok).map(i=>i.dados),d=ok[0]||{};return{n:ok.length,titulo:d.titulo||null,foto:(d.fotos||[]).find(Boolean)||null,local:[d.bairro,d.cidade].filter(Boolean).join(' · ')||null,preco:d.preco_venda||d.preco_aluguel||(d.tipologias||[]).map(t=>t.preco_venda||t.preco_aluguel).find(Boolean)||null}}
 app.get('/api/apresentacoes',requireUser,async(req,res)=>{try{const rows=await listPresentations({userId:req.user.id,limit:150});res.json(rows.map(r=>({id:r.id,cliente:r.cliente||null,modelo:r.modelo||'editorial',criado_em:r.criado_em||null,resumo:resumo(r.imoveis||[])})))}catch(e){console.error('Erro ao listar apresentações:',e.message);res.status(500).json({erro:'Não foi possível carregar o histórico.'})}});
 
-app.get('/ver/:id',async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada)return res.status(404).send(errorPage('Seleção não encontrada.'));res.send(clientPageV2(entrada))}catch(e){console.error('Erro ao abrir seleção:',e.message);res.status(500).send(errorPage('Erro ao carregar seleção.'))}});
+app.get('/ver/:id',async(req,res)=>{try{const entrada=await getPresentation(req.params.id);if(!entrada)return res.status(404).send(errorPage('Seleção não encontrada.'));res.send(clientPageV3(entrada))}catch(e){console.error('Erro ao abrir seleção:',e.message);res.status(500).send(errorPage('Erro ao carregar seleção.'))}});
 app.post('/api/votar/:id',async(req,res)=>{const votos=req.body?.votos;if(!votos||typeof votos!=='object'||Array.isArray(votos))return res.status(400).json({erro:'Avaliação inválida.'});const keys=Object.keys(votos);if(keys.length>100||keys.some(k=>!['like','dislike'].includes(votos[k])))return res.status(400).json({erro:'Avaliação inválida.'});try{await saveVotes(req.params.id,votos);res.json({ok:true})}catch(e){console.error('Erro ao salvar avaliação:',e.message);res.status(e?.code==='VOTES_ALREADY_SENT'?409:500).json({erro:e?.code==='VOTES_ALREADY_SENT'?'Esta avaliação já foi enviada.':'Erro ao salvar avaliação.'})}});
 app.get('/resultado/:id',requireUser,async(req,res)=>{
   try{
