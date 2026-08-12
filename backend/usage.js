@@ -37,7 +37,7 @@ export async function recordUsage({ userId, eventType = 'property_extract', sour
     if (mode === 'postgres') {
       await getPool().query(`INSERT INTO usage_events (user_id,event_type,source,units,success,metadata) VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,[userId,eventType,source||'unknown',Math.max(1,Number(units)||1),!!success,JSON.stringify(metadata||{})]);
     } else if (mode === 'd1') {
-      await d1Query(`INSERT INTO usage_events (user_id,event_type,source,units,success,metadata) VALUES (?,?,?,?,?,?)`,[userId,eventType,source||'unknown',Math.max(1,Number(units)||1,success?1:0,JSON.stringify(metadata||{})]);
+      await d1Query(`INSERT INTO usage_events (user_id,event_type,source,units,success,metadata) VALUES (?,?,?,?,?,?)`,[userId,eventType,source||'unknown',Math.max(1,Number(units)||1),success?1:0,JSON.stringify(metadata||{})]);
     }
   } catch (e) { console.warn('Falha ao registrar uso:', e.message); }
 }
