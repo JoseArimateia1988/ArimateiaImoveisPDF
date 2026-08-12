@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
@@ -37,7 +38,14 @@ registerAuthRoutes(app,{sanitizeProfile:safeProfile});
 function privateHost(hostname){const h=String(hostname||'').toLowerCase();if(!h||h==='localhost'||h==='::1'||h.endsWith('.local'))return true;if(/^(127|10|0)\./.test(h)||/^192\.168\./.test(h)||/^169\.254\./.test(h))return true;const m=h.match(/^172\.(\d+)\./);return!!(m&&Number(m[1])>=16&&Number(m[1])<=31)}
 app.get('/img',async(req,res)=>{try{const u=new URL(String(req.query.u||''));if(!['http:','https:'].includes(u.protocol)||privateHost(u.hostname))return res.status(400).end();const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0'},signal:AbortSignal.timeout(20000)});if(!r.ok)return res.status(502).end();const type=r.headers.get('content-type')||'';if(!type.startsWith('image/'))return res.status(415).end();res.set('Content-Type',type);res.set('Cache-Control','public, max-age=86400');res.end(Buffer.from(await r.arrayBuffer()))}catch{res.status(502).end()}});
 
-app.get(['/pdf','/pdf/'],(_,res)=>res.sendFile(path.join(frontendDir,'index.html')));
+app.get(['/pdf','/pdf/'],(_,res)=>{
+  try{
+    let html=fs.readFileSync(path.join(frontendDir,'index.html'),'utf8');
+    html=html.replace('</head>','  <link rel="stylesheet" href="/pdf/qa-fixes.css">\n</head>');
+    html=html.replace('</body>','  <script src="/pdf/qa-fixes.js"></script>\n</body>');
+    res.type('html').send(html);
+  }catch{res.status(500).send('Erro ao carregar a Busca Certa.');}
+});
 app.get('/pdf/v1.css',(_,res)=>res.sendFile(path.join(frontendDir,'v1.css')));
 app.get('/pdf/busca-certa.css',(_,res)=>res.sendFile(path.join(frontendDir,'busca-certa.css')));
 app.get('/pdf/qa-fixes.css',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.css')));
