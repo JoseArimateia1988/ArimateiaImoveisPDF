@@ -53,10 +53,21 @@ app.get('/pdf/busca-certa.css',(_,res)=>res.sendFile(path.join(frontendDir,'busc
 app.get('/pdf/qa-fixes.css',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.css')));
 app.get('/pdf/v1.js',(_,res)=>res.sendFile(path.join(frontendDir,'v1.js')));
 app.get('/pdf/qa-fixes.js',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.js')));
-app.get('/',(_,res)=>res.sendFile(path.join(frontendDir,'landing.html')));
+app.get('/',(_,res)=>{
+  try{
+    let html=fs.readFileSync(path.join(frontendDir,'landing.html'),'utf8');
+    const mensal=process.env.HOTMART_CHECKOUT_MENSAL||'/pdf';
+    const anual=process.env.HOTMART_CHECKOUT_ANUAL||'/pdf';
+    html=html.replaceAll('Em dúvida','Pendente');
+    html=html.replace('href="/pdf">Começar no mensal','href="'+mensal+'">Começar no mensal');
+    html=html.replace('href="/pdf">Escolher anual','href="'+anual+'">Escolher anual');
+    html=html.replace('<span>Um produto Mood Labs</span>','<span>Um produto Mood Labs · <a href="/termos">Termos</a> · <a href="/privacidade">Privacidade</a></span>');
+    res.type('html').send(html);
+  }catch{res.status(500).send('Erro ao carregar a página do Busca Certa.');}
+});
 app.get('/termos',(_,res)=>res.sendFile(path.join(frontendDir,'termos.html')));
 app.get('/privacidade',(_,res)=>res.sendFile(path.join(frontendDir,'privacidade.html')));
-app.get('/planos',(_,res)=>res.redirect('/#planos'));
+app.get('/planos',(_,res)=>res.redirect('/#precos'));
 
 app.post('/api/extrair',requireUser,requireNamedProfile,async(req,res)=>{
   const urls=req.body?.urls;if(!Array.isArray(urls)||!urls.length)return res.status(400).json({erro:'Envie pelo menos uma URL.'});if(urls.length>50)return res.status(400).json({erro:'Envie no máximo 50 URLs por vez.'});
