@@ -54,10 +54,13 @@ jobs:
           node --check scraper.js
           node --check claude.js
           node --check smoke-test.mjs
+          node --check visual-smoke-test.mjs
       - name: Check frontend JavaScript syntax
         run: |
           node --check ../frontend/v1.js
           node --check ../frontend/qa-fixes.js
+      - name: Run visual model smoke test
+        run: node visual-smoke-test.mjs
       - name: Start test server
         run: |
           node server.js > /tmp/imoveis-server.log 2>&1 &
@@ -68,6 +71,12 @@ jobs:
           done
           cat /tmp/imoveis-server.log
           exit 1
+      - name: Check public pages
+        run: |
+          curl -fsS http://127.0.0.1:3001/ > /dev/null
+          curl -fsS http://127.0.0.1:3001/termos > /dev/null
+          curl -fsS http://127.0.0.1:3001/privacidade > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/planos)" = "302"
       - name: Run SaaS smoke test
         run: node smoke-test.mjs
       - name: Show server log on failure
