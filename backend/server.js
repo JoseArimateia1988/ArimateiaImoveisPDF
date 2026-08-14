@@ -54,6 +54,9 @@ app.get('/pdf/qa-fixes.css',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixe
 app.get('/pdf/v1.js',(_,res)=>res.sendFile(path.join(frontendDir,'v1.js')));
 app.get('/pdf/qa-fixes.js',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.js')));
 app.get('/',(_,res)=>res.sendFile(path.join(frontendDir,'landing.html')));
+app.get('/termos',(_,res)=>res.sendFile(path.join(frontendDir,'termos.html')));
+app.get('/privacidade',(_,res)=>res.sendFile(path.join(frontendDir,'privacidade.html')));
+app.get('/planos',(_,res)=>res.redirect('/#planos'));
 
 app.post('/api/extrair',requireUser,requireNamedProfile,async(req,res)=>{
   const urls=req.body?.urls;if(!Array.isArray(urls)||!urls.length)return res.status(400).json({erro:'Envie pelo menos uma URL.'});if(urls.length>50)return res.status(400).json({erro:'Envie no máximo 50 URLs por vez.'});
