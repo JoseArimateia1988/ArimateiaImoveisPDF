@@ -14,8 +14,12 @@ import { errorPage } from './pages-v2.js';
 import { clientPageV4 } from './client-v4.js';
 import { resultPageV2 } from './result-v2.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const frontendDir = path.join(__dirname, '../frontend');
+// Em Node/Render existe caminho físico para o frontend. No bundle do Worker,
+// import.meta.url pode não apontar para um arquivo real; nesse caso os arquivos
+// públicos são entregues pelo Cloudflare Static Assets e o Express fica só com
+// as rotas dinâmicas.
+const moduleUrl = import.meta.url;
+const frontendDir = moduleUrl ? path.join(path.dirname(fileURLToPath(moduleUrl)), '../frontend') : null;
 const app = express();
 const PORT = process.env.PORT || 3001;
 const MODELOS = new Set(['editorial', 'clean', 'bold', 'minimal']);
@@ -37,43 +41,92 @@ function requireNamedProfile(req,res,next){
 }
 registerAuthRoutes(app,{sanitizeProfile:safeProfile});
 
-function privateHost(hostname){const h=String(hostname||'').toLowerCase();if(!h||h==='localhost'||h==='::1'||h.endsWith('.local'))return true;if(/^(127|10|0)\./.test(h)||/^192\.168\./.test(h)||/^169\.254\./.test(h))return true;const m=h.match(/^172\.(\d+)\./);return!!(m&&Number(m[1])>=16&&Number(m[1])<=31)}
-app.get('/img',async(req,res)=>{try{const u=new URL(String(req.query.u||''));if(!['http:','https:'].includes(u.protocol)||privateHost(u.hostname))return res.status(400).end();const r=await fetch(u,{redirect:'follow',headers:{'User-Agent':'Mozilla/5.0'},signal:AbortSignal.timeout(20000)});if(!r.ok)return res.status(502).end();const type=r.headers.get('content-type')||'';if(!type.startsWith('image/'))return res.status(415).end();res.set('Content-Type',type);res.set('Cache-Control','public, max-age=86400');res.end(Buffer.from(await r.arrayBuffer()))}catch{res.status(502).end()}});
+function privateHost(hostname){
+  const h=String(hostname||'').toLowerCase();
+  if(!h||h==='localhost'||h==='::1'||h.endsWith('.local'))return true;
+  if(/^(127|10|0)\./.test(h)||/^192\.168\./.test(h)||/^169\.254\./.test(h))return true;
+  const m=h.match(/^172\.(\d+)\./);
+  return !!(m&&Number(m[1])>=16&&Number(m[1])<=31);
+}
+async function fetchPublicImage(raw){
+  let current=new URL(String(raw||''));
+  for(let hop=0;hop<4;hop++){
+    if(!['http:','https:'].includes(current.protocol)||privateHost(current.hostname)){
+      const e=new Error('URL de imagem não permitida');e.code='BAD_IMAGE_URL';throw e;
+    }
+    const r=await fetch(current,{redirect:'manual',headers:{'User-Agent':'Mozilla/5.0'},signal:AbortSignal.timeout(20000)});
+    if([301,302,303,307,308].includes(r.status)){
+      const location=r.headers.get('location');
+      if(!location)throw new Error('Redirecionamento de imagem inválido');
+      current=new URL(location,current);
+      continue;
+    }
+    return r;
+  }
+  throw new Error('Muitos redirecionamentos de imagem');
+}
+app.get('/img',async(req,res)=>{
+  try{
+    const r=await fetchPublicImage(req.query.u);
+    if(!r.ok)return res.status(502).end();
+    const type=r.headers.get('content-type')||'';
+    if(!type.startsWith('image/'))return res.status(415).end();
+    res.set('Content-Type',type);
+    res.set('Cache-Control','public, max-age=86400');
+    res.end(Buffer.from(await r.arrayBuffer()));
+  }catch(e){res.status(e?.code==='BAD_IMAGE_URL'?400:502).end()}
+});
 
-app.get(['/pdf','/pdf/'],(_,res)=>{
-  try{
-    let html=fs.readFileSync(path.join(frontendDir,'index.html'),'utf8');
-    html=html.replace('</head>','  <link rel="stylesheet" href="/pdf/qa-fixes.css">\n</head>');
-    html=html.replace('</body>','  <script src="/pdf/qa-fixes.js"></script>\n</body>');
-    res.type('html').send(html);
-  }catch{res.status(500).send('Erro ao carregar a Busca Certa.');}
-});
-app.get('/pdf/v1.css',(_,res)=>res.sendFile(path.join(frontendDir,'v1.css')));
-app.get('/pdf/busca-certa.css',(_,res)=>res.sendFile(path.join(frontendDir,'busca-certa.css')));
-app.get('/pdf/qa-fixes.css',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.css')));
-app.get('/pdf/v1.js',(_,res)=>res.sendFile(path.join(frontendDir,'v1.js')));
-app.get('/pdf/qa-fixes.js',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.js')));
-app.get('/',(_,res)=>{
-  try{
-    let html=fs.readFileSync(path.join(frontendDir,'landing.html'),'utf8');
-    const mensal=process.env.HOTMART_CHECKOUT_MENSAL||'/pdf';
-    const anual=process.env.HOTMART_CHECKOUT_ANUAL||'/pdf';
-    html=html.replaceAll('Em dúvida','Pendente');
-    html=html.replace('href="/pdf">Começar no mensal','href="'+mensal+'">Começar no mensal');
-    html=html.replace('href="/pdf">Escolher anual','href="'+anual+'">Escolher anual');
-    html=html.replace('<span>Um produto Mood Labs</span>','<span>Um produto Mood Labs · <a href="/termos">Termos</a> · <a href="/privacidade">Privacidade</a></span>');
-    res.type('html').send(html);
-  }catch{res.status(500).send('Erro ao carregar a página do Busca Certa.');}
-});
-app.get('/termos',(_,res)=>res.sendFile(path.join(frontendDir,'termos.html')));
-app.get('/privacidade',(_,res)=>res.sendFile(path.join(frontendDir,'privacidade.html')));
+// Compatibilidade com o deploy Node/Render. No Worker estes caminhos são
+// resolvidos primeiro pelo Static Assets, sem custo de leitura via Express.
+if(frontendDir){
+  app.get(['/pdf','/pdf/'],(_,res)=>{
+    try{
+      let html=fs.readFileSync(path.join(frontendDir,'index.html'),'utf8');
+      html=html.replace('</head>','  <link rel="stylesheet" href="/pdf/qa-fixes.css">\n</head>');
+      html=html.replace('</body>','  <script src="/pdf/qa-fixes.js"></script>\n</body>');
+      res.type('html').send(html);
+    }catch{res.status(500).send('Erro ao carregar a Busca Certa.');}
+  });
+  app.get('/pdf/v1.css',(_,res)=>res.sendFile(path.join(frontendDir,'v1.css')));
+  app.get('/pdf/busca-certa.css',(_,res)=>res.sendFile(path.join(frontendDir,'busca-certa.css')));
+  app.get('/pdf/qa-fixes.css',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.css')));
+  app.get('/pdf/v1.js',(_,res)=>res.sendFile(path.join(frontendDir,'v1.js')));
+  app.get('/pdf/qa-fixes.js',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.js')));
+  app.get('/',(_,res)=>{
+    try{
+      let html=fs.readFileSync(path.join(frontendDir,'landing.html'),'utf8');
+      const mensal=process.env.HOTMART_CHECKOUT_MENSAL||'/pdf';
+      const anual=process.env.HOTMART_CHECKOUT_ANUAL||'/pdf';
+      html=html.replaceAll('Em dúvida','Pendente');
+      html=html.replace('href="/pdf">Começar no mensal','href="'+mensal+'">Começar no mensal');
+      html=html.replace('href="/pdf">Escolher anual','href="'+anual+'">Escolher anual');
+      html=html.replace('<span>Um produto Mood Labs</span>','<span>Um produto Mood Labs · <a href="/termos">Termos</a> · <a href="/privacidade">Privacidade</a></span>');
+      res.type('html').send(html);
+    }catch{res.status(500).send('Erro ao carregar a página do Busca Certa.');}
+  });
+  app.get('/termos',(_,res)=>res.sendFile(path.join(frontendDir,'termos.html')));
+  app.get('/privacidade',(_,res)=>res.sendFile(path.join(frontendDir,'privacidade.html')));
+}
 app.get('/planos',(_,res)=>res.redirect('/#precos'));
 
 app.post('/api/extrair',requireUser,requireNamedProfile,async(req,res)=>{
-  const urls=req.body?.urls;if(!Array.isArray(urls)||!urls.length)return res.status(400).json({erro:'Envie pelo menos uma URL.'});if(urls.length>50)return res.status(400).json({erro:'Envie no máximo 50 URLs por vez.'});
+  const urls=req.body?.urls;
+  if(!Array.isArray(urls)||!urls.length)return res.status(400).json({erro:'Envie pelo menos uma URL.'});
+  if(urls.length>50)return res.status(400).json({erro:'Envie no máximo 50 URLs por vez.'});
   const sources=urls.map(url=>isOruloUrl(url)?'orulo':'web_ai');
-  const resultados=await Promise.allSettled(urls.map(async(url,i)=>{if(!/^https?:\/\//i.test(url))throw new Error('URL inválida');if(sources[i]==='orulo')return{dados:{...(await fetchOruloImovel(url)),url_origem:url},usage:null};const{text,images}=await fetchPageContent(url);const{data,usage}=await extractImovelDataWithUsage(text,url);return{dados:{...data,fotos:images,plantas:[],url_origem:url},usage}}));
-  await Promise.all(resultados.map((r,i)=>{let host='';try{host=new URL(urls[i]).hostname}catch{}const usage=r.status==='fulfilled'?r.value.usage:null;return recordUsage({userId:req.user.id,source:sources[i],units:1,success:r.status==='fulfilled',metadata:{host,input_tokens:usage?.input_tokens||0,output_tokens:usage?.output_tokens||0,cache_creation_input_tokens:usage?.cache_creation_input_tokens||0,cache_read_input_tokens:usage?.cache_read_input_tokens||0,model:usage?.model||null}})}));
+  const resultados=await Promise.allSettled(urls.map(async(url,i)=>{
+    if(!/^https?:\/\//i.test(url))throw new Error('URL inválida');
+    if(sources[i]==='orulo')return{dados:{...(await fetchOruloImovel(url)),url_origem:url},usage:null};
+    const{text,images}=await fetchPageContent(url);
+    const{data,usage}=await extractImovelDataWithUsage(text,url);
+    return{dados:{...data,fotos:images,plantas:[],url_origem:url},usage};
+  }));
+  await Promise.all(resultados.map((r,i)=>{
+    let host='';try{host=new URL(urls[i]).hostname}catch{}
+    const usage=r.status==='fulfilled'?r.value.usage:null;
+    return recordUsage({userId:req.user.id,source:sources[i],units:1,success:r.status==='fulfilled',metadata:{host,input_tokens:usage?.input_tokens||0,output_tokens:usage?.output_tokens||0,cache_creation_input_tokens:usage?.cache_creation_input_tokens||0,cache_read_input_tokens:usage?.cache_read_input_tokens||0,model:usage?.model||null}});
+  }));
   res.json({imoveis:resultados.map((r,i)=>r.status==='fulfilled'?{ok:true,dados:r.value.dados}:{ok:false,url:urls[i],erro:r.reason?.message||'Erro desconhecido'})});
 });
 
