@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "busca-certa-homol",
+  "main": "./backend/worker.js",
+  "compatibility_date": "2026-08-22",
+  "assets": {
+    "directory": "./frontend"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "busca-certa-homol-db",
+      "database_id": "00cb50a0-923d-405d-a2a0-6e94c240cadb"
+    }
+  ],
+  "vars": {
+    "NODE_ENV": "production",
+    "ORULO_SHARE_LINKS_ENABLED": "false"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
