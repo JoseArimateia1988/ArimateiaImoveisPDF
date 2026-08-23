@@ -85,6 +85,30 @@ jobs:
         run: |
           npm install --ignore-scripts
           npx wrangler deploy --dry-run
-      - name: Show server log on failure
+      - name: Start local Cloudflare Worker
+        working-directory: .
+        env:
+          DATABASE_URL: ""
+          DATABASE_SSL: ""
+          NODE_ENV: ""
+        run: |
+          npx wrangler dev --ip 127.0.0.1 --port 8787 > /tmp/wrangler.log 2>&1 &
+          echo $! > /tmp/wrangler.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wrangler.log
+          exit 1
+      - name: Run Worker + D1 smoke test
+        working-directory: .
+        env:
+          TEST_BASE_URL: http://127.0.0.1:8787
+          EXPECTED_DATABASE: d1
+        run: node backend/smoke-test.mjs
+      - name: Show logs on failure
         if: failure()
-        run: cat /tmp/imoveis-server.log || true
+        working-directory: .
+        run: |
+          cat /tmp/imoveis-server.log || true
+          cat /tmp/wrangler.log || true
