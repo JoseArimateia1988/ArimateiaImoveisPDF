@@ -2,9 +2,9 @@ name: Validate product branch
 
 on:
   push:
-    branches: [produto-v1-review-pdf, busca-certa-visual, busca-certa-d1]
+    branches: [produto-v1-review-pdf, busca-certa-visual, busca-certa-d1, busca-certa-cloudflare]
   pull_request:
-    branches: [main]
+    branches: [main, busca-certa-d1]
 
 jobs:
   validate:
@@ -41,6 +41,7 @@ jobs:
       - name: Check backend syntax
         run: |
           node --check server.js
+          node --check worker.js
           node --check pages.js
           node --check pages-v2.js
           node --check client-v2.js
@@ -79,6 +80,11 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/planos)" = "302"
       - name: Run SaaS smoke test
         run: node smoke-test.mjs
+      - name: Validate Cloudflare bundle
+        working-directory: .
+        run: |
+          npm install --ignore-scripts
+          npx wrangler deploy --dry-run
       - name: Show server log on failure
         if: failure()
         run: cat /tmp/imoveis-server.log || true
