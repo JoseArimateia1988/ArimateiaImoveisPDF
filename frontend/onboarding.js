@@ -73,10 +73,7 @@ async function bcRegister(){
   try{
     const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:senha})});
     const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.erro||'Não foi possível criar sua conta.');bcSetConta(d);
-    const profile={...PERFIL_PADRAO,...perfilAtual,nome,email};
-    const pr=await fetch('/api/profile',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile})});
-    const pd=await pr.json().catch(()=>({}));if(pr.ok)perfilAtual={...PERFIL_PADRAO,...pd.profile};
-    preencherOnboarding();irOnboarding(1);bcShow('onboarding');
+    preencherOnboarding();$('ob-nome').value=nome;$('ob-email').value=email;irOnboarding(1);bcShow('onboarding');
   }catch(e){erro.textContent=e.message}finally{btn.disabled=false;btn.textContent='Criar minha conta'}
 }
 async function bcLogin(){
@@ -119,7 +116,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   ['login-email','login-senha'].forEach(id=>$(id)?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();bcLogin()}},{capture:true}));
   $('btn-cadastro')?.addEventListener('click',bcRegister);
   ['cadastro-nome','cadastro-email','cadastro-senha','cadastro-senha-confirmar'].forEach(id=>$(id)?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();bcRegister()}}));
-  const sairOriginal=sairConta;sairConta=bcLogout;
+  sairConta=bcLogout;
   const voltarOriginal=voltarInicio;voltarInicio=function(){bcGo(BC_ROUTES.app,{replace:true});voltarOriginal()};
   window.addEventListener('popstate',bcRoute);
   setTimeout(bcRoute,0);
