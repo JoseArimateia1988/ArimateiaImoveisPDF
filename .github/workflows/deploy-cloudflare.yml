@@ -1,6 +1,9 @@
 name: Deploy Busca Certa Cloudflare
 
 on:
+  push:
+    branches:
+      - busca-certa-cloudflare
   workflow_dispatch:
 
 jobs:
