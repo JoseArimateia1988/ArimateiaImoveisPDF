@@ -2,13 +2,33 @@ import { env } from 'cloudflare:workers';
 import { httpServerHandler } from 'cloudflare:node';
 import { setD1Binding } from './d1.js';
 
-// No Worker, o D1 chega como binding nativo. A versão Node/Render continua
-// podendo usar o fallback REST existente, então esta migração é reversível.
 setD1Binding(env.DB);
-
-// O servidor Express atual já concentra autenticação, extração, links públicos,
-// avaliações e histórico. Cloudflare suporta Express via node:http, então
-// reaproveitamos o app em vez de reescrever o produto inteiro.
 await import('./server.js');
 
-export default httpServerHandler({ port: 3001 });
+const appHandler = httpServerHandler({ port: 3001 });
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+
+    if (url.pathname === '/') {
+      return env.ASSETS.fetch(new Request(new URL('/landing.html', url), request));
+    }
+
+    if (['/login', '/cadastro', '/app', '/pdf'].includes(url.pathname)) {
+      return env.ASSETS.fetch(new Request(new URL('/index.html', url), request));
+    }
+
+    if (
+      url.pathname.startsWith('/api/') ||
+      url.pathname.startsWith('/ver/') ||
+      url.pathname.startsWith('/resultado/') ||
+      url.pathname === '/health' ||
+      url.pathname === '/img'
+    ) {
+      return appHandler.fetch(request);
+    }
+
+    return env.ASSETS.fetch(request);
+  }
+};
