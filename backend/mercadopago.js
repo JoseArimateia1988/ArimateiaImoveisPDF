@@ -1,7 +1,10 @@
 import { savePaymentAccess, getPaymentAccess } from './payments.js';
 
 const MP_API = 'https://api.mercadopago.com';
-const PRICE = 10;
+const PRICE = 39.90;
+const COUPONS = {
+  BETA10: { price: 10, label: 'Beta tester' },
+};
 
 function token() {
   const value = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -13,6 +16,7 @@ function token() {
   return value;
 }
 function validEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim()); }
+function normalizeCoupon(value) { return String(value || '').trim().toUpperCase(); }
 async function mpFetch(path, opts={}) {
   const r = await fetch(`${MP_API}${path}`, {
     ...opts,
@@ -35,18 +39,22 @@ async function mpFetch(path, opts={}) {
 export function registerMercadoPagoRoutes(app) {
   app.post('/api/mercadopago/checkout', async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
+    const couponCode = normalizeCoupon(req.body?.coupon);
     if (!validEmail(email)) return res.status(400).json({ erro: 'Digite um e-mail válido.' });
+    if (couponCode && !COUPONS[couponCode]) return res.status(400).json({ erro: 'Cupom inválido.' });
+    const coupon = couponCode ? COUPONS[couponCode] : null;
+    const amount = coupon?.price ?? PRICE;
     try {
       const preference = await mpFetch('/checkout/preferences', {
         method: 'POST',
         body: JSON.stringify({
           items: [{
-            id: 'busca-certa-beta',
-            title: 'Busca Certa · Acesso beta',
-            description: 'Acesso beta ao Busca Certa',
+            id: coupon ? 'busca-certa-beta' : 'busca-certa-mensal',
+            title: coupon ? 'Busca Certa · Beta tester' : 'Busca Certa · 30 dias de acesso',
+            description: coupon ? 'Acesso beta por 30 dias' : '30 dias de acesso ao Busca Certa',
             quantity: 1,
             currency_id: 'BRL',
-            unit_price: PRICE,
+            unit_price: amount,
           }],
           payer: { email },
           external_reference: email,
@@ -57,11 +65,11 @@ export function registerMercadoPagoRoutes(app) {
           },
           auto_return: 'approved',
           notification_url: 'https://busca.moodlabs.com.br/api/mercadopago/webhook',
-          metadata: { product: 'busca-certa', plan: 'beta-10' },
+          metadata: { product: 'busca-certa', plan: '30-dias', coupon: couponCode || null },
         }),
       });
-      await savePaymentAccess({ email, status:'pending', preferenceId:preference.id, amount:PRICE, currency:'BRL' });
-      res.json({ id: preference.id, checkout_url: preference.init_point });
+      await savePaymentAccess({ email, status:'pending', preferenceId:preference.id, amount, currency:'BRL', raw:{ coupon:couponCode || null } });
+      res.json({ id: preference.id, checkout_url: preference.init_point, amount, coupon: couponCode || null });
     } catch (e) {
       console.error('Erro ao criar checkout Mercado Pago:', e.message, e.details || '');
       res.status(e?.code === 'MP_NOT_CONFIGURED' ? 503 : 502).json({ erro: e.message || 'Não foi possível iniciar o pagamento.' });
@@ -85,7 +93,7 @@ export function registerMercadoPagoRoutes(app) {
         preferenceId:payment.preference_id ? String(payment.preference_id) : null,
         amount:Number(payment.transaction_amount || PRICE),
         currency:String(payment.currency_id || 'BRL'),
-        raw:{ status:payment.status, status_detail:payment.status_detail, date_approved:payment.date_approved },
+        raw:{ status:payment.status, status_detail:payment.status_detail, date_approved:payment.date_approved, metadata:payment.metadata || null },
       });
     } catch (e) {
       console.error('Erro no webhook Mercado Pago:', e.message, e.details || '');
