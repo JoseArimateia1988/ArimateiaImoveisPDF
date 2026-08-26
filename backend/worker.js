@@ -29,6 +29,9 @@ export default {
       return serveHtmlAsset('/index.html', request, url);
     }
 
+    if (url.pathname === '/pagar') {
+      return serveHtmlAsset('/pagar.html', request, url);
+    }
     if (url.pathname === '/pagamento/sucesso') {
       return serveHtmlAsset('/pagamento-sucesso.html', request, url);
     }
