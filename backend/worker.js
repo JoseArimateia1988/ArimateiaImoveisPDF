@@ -29,6 +29,16 @@ export default {
       return serveHtmlAsset('/index.html', request, url);
     }
 
+    if (url.pathname === '/pagamento/sucesso') {
+      return serveHtmlAsset('/pagamento-sucesso.html', request, url);
+    }
+    if (url.pathname === '/pagamento/pendente') {
+      return serveHtmlAsset('/pagamento-pendente.html', request, url);
+    }
+    if (url.pathname === '/pagamento/erro') {
+      return serveHtmlAsset('/pagamento-erro.html', request, url);
+    }
+
     if (
       url.pathname.startsWith('/api/') ||
       url.pathname.startsWith('/ver/') ||
