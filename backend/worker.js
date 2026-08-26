@@ -7,16 +7,26 @@ await import('./server.js');
 
 const appHandler = httpServerHandler({ port: 3001 });
 
+async function serveHtmlAsset(pathname, request, url) {
+  const assetUrl = new URL(pathname, url);
+  const assetResponse = await env.ASSETS.fetch(new Request(assetUrl, request));
+  const body = await assetResponse.arrayBuffer();
+  const headers = new Headers(assetResponse.headers);
+  headers.set('content-type', 'text/html; charset=UTF-8');
+  headers.delete('location');
+  return new Response(body, { status: 200, headers });
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
 
     if (url.pathname === '/') {
-      return env.ASSETS.fetch(new Request(new URL('/landing.html', url), request));
+      return serveHtmlAsset('/landing.html', request, url);
     }
 
     if (['/login', '/cadastro', '/app', '/pdf'].includes(url.pathname)) {
-      return env.ASSETS.fetch(new Request(new URL('/index.html', url), request));
+      return serveHtmlAsset('/index.html', request, url);
     }
 
     if (
