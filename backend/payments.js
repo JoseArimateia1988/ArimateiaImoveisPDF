@@ -16,6 +16,17 @@ async function ensurePaymentsTable() {
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
   await d1Query(`CREATE INDEX IF NOT EXISTS idx_payment_access_status ON payment_access(status)`);
+  await d1Query(`CREATE TABLE IF NOT EXISTS subscription_plans (
+    code TEXT PRIMARY KEY,
+    plan_id TEXT NOT NULL,
+    init_point TEXT NOT NULL,
+    amount REAL NOT NULL,
+    repetitions INTEGER,
+    status TEXT NOT NULL DEFAULT 'active',
+    raw TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
   ready = true;
 }
 
@@ -42,4 +53,25 @@ export async function getPaymentAccess(email) {
   if (!normalized) return null;
   const { rows } = await d1Query(`SELECT email,status,payment_id,preference_id,amount,currency,created_at,updated_at FROM payment_access WHERE email=? LIMIT 1`, [normalized]);
   return rows[0] || null;
+}
+
+export async function getSubscriptionPlan(code) {
+  await ensurePaymentsTable();
+  const { rows } = await d1Query(`SELECT code,plan_id,init_point,amount,repetitions,status,created_at,updated_at FROM subscription_plans WHERE code=? LIMIT 1`, [String(code||'')]);
+  return rows[0] || null;
+}
+
+export async function saveSubscriptionPlan({ code, planId, initPoint, amount, repetitions=null, status='active', raw=null }) {
+  await ensurePaymentsTable();
+  await d1Query(`INSERT INTO subscription_plans (code,plan_id,init_point,amount,repetitions,status,raw,updated_at)
+    VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(code) DO UPDATE SET
+      plan_id=excluded.plan_id,
+      init_point=excluded.init_point,
+      amount=excluded.amount,
+      repetitions=excluded.repetitions,
+      status=excluded.status,
+      raw=excluded.raw,
+      updated_at=CURRENT_TIMESTAMP`, [code,planId,initPoint,amount,repetitions,status,raw?JSON.stringify(raw):null]);
+  return { code, planId, initPoint, amount, repetitions, status };
 }
