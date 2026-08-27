@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   'Accept-Language': 'pt-BR,pt;q=0.9',
@@ -31,9 +29,32 @@ function assertPilotEnabled() {
   }
 }
 
+async function fetchOrulo(url, { headers = HEADERS, responseType = 'json' } = {}) {
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(25000),
+    });
+  } catch (error) {
+    throw new Error(`Falha ao acessar a Órulo: ${error?.message || 'erro de conexão'}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`Órulo respondeu com status ${response.status}.`);
+  }
+
+  if (responseType === 'text') return response.text();
+  return response.json();
+}
+
 async function getCredentials(url) {
   assertPilotEnabled();
-  const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 25000 });
+  // Usa fetch nativo para manter compatibilidade com Cloudflare Workers.
+  // O adapter fetch do Axios envia cache="default", modo não aceito pelo runtime do Worker.
+  const html = await fetchOrulo(url, { responseType: 'text' });
   const pkMatch = html.match(/var\s+publicKey\s*=\s*['"]([^'"]+)['"]/);
   const idMatch = html.match(/var\s+building_id\s*=\s*(\d+)/);
 
@@ -54,11 +75,9 @@ async function getCredentials(url) {
 }
 
 async function apiGet(path, publicKey) {
-  const { data } = await axios.get(`https://www.orulo.com.br/api/v2${path}`, {
+  return fetchOrulo(`https://www.orulo.com.br/api/v2${path}`, {
     headers: { ...HEADERS, Authorization: `Bearer ${publicKey}` },
-    timeout: 25000,
   });
-  return data;
 }
 
 function listaDaResposta(data, chaves = []) {
