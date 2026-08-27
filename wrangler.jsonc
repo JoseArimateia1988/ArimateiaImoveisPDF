@@ -19,7 +19,7 @@
   ],
   "vars": {
     "NODE_ENV": "production",
-    "ORULO_SHARE_LINKS_ENABLED": "false"
+    "ORULO_SHARE_LINKS_ENABLED": "true"
   },
   "observability": {
     "enabled": true
