@@ -1,15 +1,34 @@
-import { savePaymentAccess, getPaymentAccess } from './payments.js';
+import { savePaymentAccess, getPaymentAccess, getSubscriptionPlan, saveSubscriptionPlan } from './payments.js';
 
 const MP_API = 'https://api.mercadopago.com';
 const PRICE = 39.90;
 const BETA_PRICE = 10;
-const BETA_END = '2027-01-01T03:00:00.000Z';
 const COUPONS = { BETA10: { price: BETA_PRICE, label: 'Beta tester' } };
+const PLAN_DEFS = {
+  mensal: { code:'mensal', reason:'Busca Certa · Assinatura mensal', amount:PRICE, repetitions:null },
+  beta: { code:'beta', reason:'Busca Certa · Beta tester', amount:BETA_PRICE, repetitions:5 },
+};
 
 function token(){const value=process.env.MERCADOPAGO_ACCESS_TOKEN;if(!value){const e=new Error('Mercado Pago não configurado.');e.code='MP_NOT_CONFIGURED';throw e;}return value;}
 function validEmail(email){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email||'').trim());}
 function normalizeCoupon(value){return String(value||'').trim().toUpperCase();}
 async function mpFetch(path,opts={}){const r=await fetch(`${MP_API}${path}`,{...opts,headers:{Authorization:`Bearer ${token()}`,'Content-Type':'application/json',...(opts.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(data?.message||data?.error||'Erro no Mercado Pago.');e.status=r.status;e.details=data;throw e;}return data;}
+
+async function ensurePlan(kind){
+  const def=PLAN_DEFS[kind];
+  const saved=await getSubscriptionPlan(def.code);
+  if(saved?.plan_id&&saved?.init_point&&saved?.status==='active') return saved;
+  const autoRecurring={frequency:1,frequency_type:'months',transaction_amount:def.amount,currency_id:'BRL'};
+  if(def.repetitions) autoRecurring.repetitions=def.repetitions;
+  const plan=await mpFetch('/preapproval_plan',{method:'POST',body:JSON.stringify({
+    reason:def.reason,
+    auto_recurring:autoRecurring,
+    back_url:'https://busca.moodlabs.com.br/pagamento/sucesso'
+  })});
+  if(!plan?.id||!plan?.init_point) throw new Error('Mercado Pago não retornou o plano corretamente.');
+  await saveSubscriptionPlan({code:def.code,planId:String(plan.id),initPoint:String(plan.init_point),amount:def.amount,repetitions:def.repetitions,status:String(plan.status||'active'),raw:plan});
+  return {code:def.code,plan_id:String(plan.id),init_point:String(plan.init_point),amount:def.amount,repetitions:def.repetitions,status:String(plan.status||'active')};
+}
 
 export function registerMercadoPagoRoutes(app){
   app.post('/api/mercadopago/checkout',async(req,res)=>{
@@ -17,22 +36,13 @@ export function registerMercadoPagoRoutes(app){
     const couponCode=normalizeCoupon(req.body?.coupon);
     if(!validEmail(email)) return res.status(400).json({erro:'Digite um e-mail válido.'});
     if(couponCode&&!COUPONS[couponCode]) return res.status(400).json({erro:'Cupom inválido.'});
-    const isBeta=couponCode==='BETA10';
-    const amount=isBeta?BETA_PRICE:PRICE;
+    const kind=couponCode==='BETA10'?'beta':'mensal';
+    const amount=PLAN_DEFS[kind].amount;
     try{
-      const subscription=await mpFetch('/preapproval',{method:'POST',body:JSON.stringify({
-        reason:isBeta?'Busca Certa · Beta tester':'Busca Certa · Assinatura mensal',
-        external_reference:`busca-certa:${isBeta?'beta':'mensal'}:${email}`,
-        payer_email:email,
-        auto_recurring:{frequency:1,frequency_type:'months',transaction_amount:amount,currency_id:'BRL',...(isBeta?{end_date:BETA_END}:{})},
-        back_url:'https://busca.moodlabs.com.br/pagamento/sucesso',
-        status:'pending'
-      })});
-      await savePaymentAccess({email,status:'pending',preferenceId:subscription.id,amount,currency:'BRL',raw:{type:'subscription',coupon:couponCode||null,beta_end:isBeta?BETA_END:null}});
-      const checkoutUrl=subscription.init_point||subscription.sandbox_init_point;
-      if(!checkoutUrl) throw new Error('Mercado Pago não retornou o link da assinatura.');
-      res.json({id:subscription.id,checkout_url:checkoutUrl,amount,coupon:couponCode||null,type:'subscription'});
-    }catch(e){console.error('Erro ao criar assinatura Mercado Pago:',e.message,e.details||'');res.status(e?.code==='MP_NOT_CONFIGURED'?503:502).json({erro:e.message||'Não foi possível iniciar a assinatura.'});}
+      const plan=await ensurePlan(kind);
+      await savePaymentAccess({email,status:'pending',preferenceId:plan.plan_id,amount,currency:'BRL',raw:{type:'subscription-plan',plan:kind,coupon:couponCode||null,repetitions:PLAN_DEFS[kind].repetitions}});
+      res.json({id:plan.plan_id,checkout_url:plan.init_point,amount,coupon:couponCode||null,type:'subscription-plan'});
+    }catch(e){console.error('Erro ao criar/usar plano Mercado Pago:',e.message,e.details||'');res.status(e?.code==='MP_NOT_CONFIGURED'?503:502).json({erro:e.message||'Não foi possível iniciar a assinatura.'});}
   });
 
   app.post('/api/mercadopago/webhook',async(req,res)=>{
@@ -46,7 +56,7 @@ export function registerMercadoPagoRoutes(app){
         const ref=String(sub.external_reference||'');
         const email=String(sub.payer_email||ref.split(':').pop()||'').trim().toLowerCase();
         if(!validEmail(email)) return;
-        await savePaymentAccess({email,status:String(sub.status||'pending').toLowerCase(),preferenceId:String(sub.id||id),amount:Number(sub.auto_recurring?.transaction_amount||PRICE),currency:String(sub.auto_recurring?.currency_id||'BRL'),raw:{type:'subscription',external_reference:ref,next_payment_date:sub.next_payment_date||null}});
+        await savePaymentAccess({email,status:String(sub.status||'pending').toLowerCase(),preferenceId:String(sub.id||id),amount:Number(sub.auto_recurring?.transaction_amount||PRICE),currency:String(sub.auto_recurring?.currency_id||'BRL'),raw:{type:'subscription',external_reference:ref,next_payment_date:sub.next_payment_date||null,preapproval_plan_id:sub.preapproval_plan_id||null}});
         return;
       }
       const payment=await mpFetch(`/v1/payments/${encodeURIComponent(id)}`);
