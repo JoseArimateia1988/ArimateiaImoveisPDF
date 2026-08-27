@@ -2,9 +2,9 @@ name: Validate product branch
 
 on:
   push:
-    branches: [produto-v1-review-pdf, busca-certa-visual, busca-certa-d1]
+    branches: [produto-v1-review-pdf, busca-certa-visual, busca-certa-d1, busca-certa-cloudflare]
   pull_request:
-    branches: [main]
+    branches: [main, busca-certa-d1]
 
 jobs:
   validate:
@@ -35,12 +35,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
       - name: Install backend dependencies
         run: npm install
       - name: Check backend syntax
         run: |
           node --check server.js
+          node --check worker.js
           node --check pages.js
           node --check pages-v2.js
           node --check client-v2.js
@@ -79,6 +80,35 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/planos)" = "302"
       - name: Run SaaS smoke test
         run: node smoke-test.mjs
-      - name: Show server log on failure
+      - name: Validate Cloudflare bundle
+        working-directory: .
+        run: |
+          npm install --ignore-scripts
+          npx wrangler deploy --dry-run
+      - name: Start local Cloudflare Worker
+        working-directory: .
+        env:
+          DATABASE_URL: ""
+          DATABASE_SSL: ""
+          NODE_ENV: ""
+        run: |
+          npx wrangler dev --ip 127.0.0.1 --port 8787 > /tmp/wrangler.log 2>&1 &
+          echo $! > /tmp/wrangler.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/wrangler.log
+          exit 1
+      - name: Run Worker + D1 smoke test
+        working-directory: .
+        env:
+          TEST_BASE_URL: http://127.0.0.1:8787
+          EXPECTED_DATABASE: d1
+        run: node backend/smoke-test.mjs
+      - name: Show logs on failure
         if: failure()
-        run: cat /tmp/imoveis-server.log || true
+        working-directory: .
+        run: |
+          cat /tmp/imoveis-server.log || true
+          cat /tmp/wrangler.log || true

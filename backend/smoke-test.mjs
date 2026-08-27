@@ -1,4 +1,5 @@
 const BASE = process.env.TEST_BASE_URL || 'http://127.0.0.1:3001';
+const EXPECTED_DATABASE = process.env.EXPECTED_DATABASE || 'postgres';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -27,7 +28,7 @@ const senha = 'senha-segura-123';
 
 console.log('1. health');
 const health = await request('/health', { expected: 200 });
-assert(health.data.database === 'postgres', 'Banco do smoke test não está em Postgres');
+assert(health.data.database === EXPECTED_DATABASE, `Banco do smoke test não está em ${EXPECTED_DATABASE}`);
 
 console.log('2. criar conta A');
 const regA = await request('/api/auth/register', { method: 'POST', body: { email: emailA, password: senha }, expected: 201 });

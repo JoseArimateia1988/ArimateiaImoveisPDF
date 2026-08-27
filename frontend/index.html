@@ -7,46 +7,116 @@
   <title>Busca Certa | Seleções personalizadas de imóveis</title>
   <link rel="stylesheet" href="/pdf/v1.css">
   <link rel="stylesheet" href="/pdf/busca-certa.css">
+  <link rel="stylesheet" href="/onboarding.css">
 </head>
 <body>
-  <section id="tela-login" class="tela central">
-    <div class="card-login">
+  <section id="tela-login" class="tela central auth-page">
+    <div class="card-login auth-shell">
       <div class="bc-auth-head">
-        <div class="bc-brand-row"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></div>
-        <div class="bc-kicker">Para corretores de imóveis</div>
-        <h1>Apresente opções com mais contexto e menos links soltos.</h1>
-        <p>Organize seleções personalizadas, envie por link ou PDF e acompanhe o que realmente despertou o interesse de cada cliente.</p>
+        <div class="bc-brand-row"><a class="bc-brand-link" href="/"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></a></div>
+        <div class="bc-kicker">Acesso à sua conta</div>
+        <h1>Bom te ver de volta.</h1>
+        <p>Entre para criar novas seleções, rever materiais enviados e acompanhar o que interessou aos seus clientes.</p>
       </div>
       <div class="bc-auth-body">
-        <div class="eyebrow">Sua conta</div>
-        <h2 class="bc-serif" style="font-size:27px;font-weight:500;margin:6px 0 8px;color:#1f2e3f">Entre na Busca Certa</h2>
-        <p class="muted">Seu perfil, suas seleções e o histórico dos seus clientes ficam organizados em um só lugar.</p>
-        <input id="login-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com">
-        <input id="login-senha" class="campo" type="password" autocomplete="current-password" placeholder="Senha" style="margin-top:8px">
+        <div class="eyebrow">Entrar</div>
+        <h2 class="bc-serif auth-title">Acesse sua conta</h2>
+        <label class="field-label">E-mail<input id="login-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com"></label>
+        <label class="field-label">Senha<input id="login-senha" class="campo" type="password" autocomplete="current-password" placeholder="Sua senha"></label>
         <div id="login-erro" class="status erro"></div>
         <button id="btn-login" class="btn btn-verde btn-full">Entrar</button>
-        <button id="btn-criar-conta" class="btn btn-claro btn-full">Criar minha conta</button>
-        <p class="muted" style="font-size:11px;text-align:center;margin:12px 0 0">No primeiro acesso, crie a conta com uma senha de pelo menos 8 caracteres.</p>
+        <button id="btn-criar-conta" type="button" hidden></button>
+        <p class="auth-switch">Ainda não tem conta? <a href="/cadastro">Criar conta</a></p>
       </div>
     </div>
   </section>
 
+  <section id="tela-cadastro" class="tela central auth-page">
+    <div class="card-login auth-shell">
+      <div class="bc-auth-head">
+        <div class="bc-brand-row"><a class="bc-brand-link" href="/"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></a></div>
+        <div class="bc-kicker">Primeiro acesso</div>
+        <h1>Crie sua conta e deixe o resto com a gente.</h1>
+        <p>Você configura seu perfil uma vez e depois usa a Busca Certa para montar seleções personalizadas para cada cliente.</p>
+      </div>
+      <div class="bc-auth-body">
+        <div class="eyebrow">Criar conta</div>
+        <h2 class="bc-serif auth-title">Comece por aqui</h2>
+        <label class="field-label">Seu nome<input id="cadastro-nome" class="campo" autocomplete="name" placeholder="Como você quer aparecer nas seleções"></label>
+        <label class="field-label">E-mail<input id="cadastro-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com"></label>
+        <label class="field-label">Senha<input id="cadastro-senha" class="campo" type="password" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"></label>
+        <label class="field-label">Confirmar senha<input id="cadastro-senha-confirmar" class="campo" type="password" autocomplete="new-password" placeholder="Repita sua senha"></label>
+        <div id="cadastro-erro" class="status erro"></div>
+        <button id="btn-cadastro" class="btn btn-verde btn-full">Criar minha conta</button>
+        <p class="auth-switch">Já tem conta? <a href="/login">Entrar</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tela-onboarding" class="tela onboarding-page">
+    <div class="onboarding-top"><a class="bc-brand-link dark" href="/"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></a><span id="onboarding-email" class="muted"></span></div>
+    <main class="onboarding-wrap">
+      <div class="onboarding-intro">
+        <div class="eyebrow">Seu primeiro acesso</div>
+        <h1>Antes da primeira seleção, vamos deixar tudo com a sua cara.</h1>
+        <p>São só as informações que vão aparecer para o cliente. Você pode editar tudo depois em Meu perfil.</p>
+      </div>
+      <div class="onboarding-progress"><span class="ativo" data-step-dot="1">1</span><i></i><span data-step-dot="2">2</span><i></i><span data-step-dot="3">3</span></div>
+
+      <section class="onboarding-card onboarding-step ativo" data-step="1">
+        <div class="step-head"><span>1 de 3</span><h2>Seu perfil profissional</h2><p>Esses dados identificam você nas seleções e nos links enviados aos clientes.</p></div>
+        <div class="perfil-grid onboarding-grid">
+          <label>Nome profissional<input id="ob-nome" class="campo" placeholder="Seu nome"></label>
+          <label>CRECI<input id="ob-creci" class="campo" placeholder="CRECI 000000-F"></label>
+          <label>WhatsApp<input id="ob-whatsapp" class="campo" placeholder="(11) 99999-9999"></label>
+          <label>Instagram<input id="ob-instagram" class="campo" placeholder="@usuario"></label>
+          <label class="span-2">E-mail de contato<input id="ob-email" class="campo" type="email" placeholder="voce@email.com"></label>
+        </div>
+        <div class="onboarding-actions"><span></span><button class="btn btn-verde" type="button" onclick="irOnboarding(2)">Continuar</button></div>
+      </section>
+
+      <section class="onboarding-card onboarding-step" data-step="2">
+        <div class="step-head"><span>2 de 3</span><h2>Sua identidade</h2><p>Defina como sua marca aparece. Foto e logo podem ser adicionados depois, sem travar seu primeiro uso.</p></div>
+        <div class="perfil-grid onboarding-grid">
+          <label class="span-2">Marca / nome profissional<input id="ob-marca" class="campo" placeholder="Nome da imobiliária, equipe ou sua marca pessoal"></label>
+          <label>Cor principal<input id="ob-cor-principal" class="color-field" type="color" value="#1f2e3f"></label>
+          <label>Cor de destaque<input id="ob-cor-secundaria" class="color-field" type="color" value="#c25b3a"></label>
+          <label class="check-label span-2"><input id="ob-usar-cores" type="checkbox"> Aplicar minhas cores aos modelos</label>
+        </div>
+        <div class="optional-note"><strong>Foto e logo são opcionais neste beta.</strong><span>Você consegue começar sem eles e completar depois em Meu perfil.</span></div>
+        <div class="onboarding-actions"><button class="btn btn-claro" type="button" onclick="irOnboarding(1)">Voltar</button><button class="btn btn-verde" type="button" onclick="irOnboarding(3)">Continuar</button></div>
+      </section>
+
+      <section class="onboarding-card onboarding-step" data-step="3">
+        <div class="step-head"><span>3 de 3</span><h2>Escolha seu visual padrão</h2><p>Essa será sua direção inicial. Em cada seleção você ainda poderá trocar o modelo antes de enviar.</p></div>
+        <div class="modelos-grid onboarding-modelos">
+          <button class="modelo-card" data-modelo="editorial" type="button" onclick="selecionarModeloOnboarding('editorial')"><span class="modelo-preview preview-editorial"><i></i><b></b><b></b></span><strong>Bordeaux</strong><small>Profundo, editorial e sofisticado.</small><span class="bc-model-tag">Direção 01</span></button>
+          <button class="modelo-card" data-modelo="clean" type="button" onclick="selecionarModeloOnboarding('clean')"><span class="modelo-preview preview-clean"><i></i><b></b><b></b></span><strong>Arquitetônico</strong><small>Claro, preciso e contemporâneo.</small><span class="bc-model-tag">Direção 02</span></button>
+          <button class="modelo-card" data-modelo="bold" type="button" onclick="selecionarModeloOnboarding('bold')"><span class="modelo-preview preview-bold"><i></i><b></b><b></b></span><strong>Expressivo</strong><small>Quente, marcante e premium.</small><span class="bc-model-tag">Direção 03</span></button>
+          <button class="modelo-card" data-modelo="minimal" type="button" onclick="selecionarModeloOnboarding('minimal')"><span class="modelo-preview preview-minimal"><i></i><b></b><b></b></span><strong>Sálvia</strong><small>Leve, acolhedor e refinado.</small><span class="bc-model-tag">Direção 04</span></button>
+        </div>
+        <div id="onboarding-status" class="status"></div>
+        <div class="onboarding-actions"><button class="btn btn-claro" type="button" onclick="irOnboarding(2)">Voltar</button><button id="btn-finalizar-onboarding" class="btn btn-verde" type="button" onclick="finalizarOnboarding()">Ir para meu painel</button></div>
+      </section>
+    </main>
+  </section>
+
   <section id="tela-entrada" class="tela central">
-    <div class="card-entrada">
+    <div class="card-entrada app-shell">
       <div class="bc-auth-head">
         <div class="bc-brand-row"><span class="bc-mark">BC</span><span class="bc-brand-name">Busca Certa</span></div>
         <div class="bc-kicker">Nova seleção</div>
         <h1>Uma busca mais organizada para o cliente. Uma apresentação mais profissional para você.</h1>
-        <p>Cole os links dos imóveis que você selecionou. A Busca Certa organiza o material para você revisar, personalizar e compartilhar.</p>
+        <p>Cole os links dos imóveis selecionados. A Busca Certa organiza o material para você revisar, personalizar e compartilhar.</p>
       </div>
       <div class="bc-auth-body">
-        <div class="eyebrow">Comece pelos imóveis</div>
-        <h2 class="bc-serif" style="font-size:28px;font-weight:500;margin:6px 0 8px;color:#1f2e3f">Cole os links. Revise. Envie.</h2>
-        <p class="muted">Use links do Órulo ou outras fontes compatíveis, um por linha. Depois escolha imagens, fotos de destaque e o modelo visual da seleção.</p>
+        <div class="eyebrow">Nova seleção</div>
+        <h2 class="bc-serif app-title">Cole os links dos imóveis</h2>
+        <p class="muted">Um link por linha. Depois você revisa imagens, escolhe os destaques e confirma o visual da apresentação.</p>
         <textarea id="campo-urls" class="campo" placeholder="https://www.orulo.com.br/s/...&#10;https://..."></textarea>
         <button id="btn-gerar" class="btn btn-verde btn-full">Buscar imóveis</button>
         <div class="entrada-secundarias">
-          <button class="btn btn-claro" onclick="abrirPerfil()">Minha marca</button>
+          <button class="btn btn-claro" onclick="abrirPerfil()">Meu perfil</button>
           <button class="btn btn-claro" onclick="abrirHistorico()">Minhas seleções</button>
         </div>
         <div class="conta-atual"><span id="conta-email"></span><button class="link-btn" onclick="sairConta()">Sair</button></div>
@@ -56,9 +126,9 @@
   </section>
 
   <section id="tela-perfil" class="tela">
-    <div class="topbar no-print"><strong>Busca Certa · Minha marca</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
+    <div class="topbar no-print"><strong>Busca Certa · Meu perfil</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Voltar</button></div></div>
     <main class="wrap perfil-wrap">
-      <div class="painel-titulo"><div><div class="eyebrow">Sua identidade</div><h1>Faça cada seleção ter a sua cara.</h1><p class="muted">Nome, marca, CRECI e contatos aparecem no PDF e no link enviado ao cliente. Configure uma vez e reaproveite nas próximas seleções.</p></div></div>
+      <div class="painel-titulo"><div><div class="eyebrow">Perfil profissional</div><h1>As informações que acompanham suas seleções.</h1><p class="muted">Edite seus dados, marca e identidade visual quando precisar.</p></div></div>
       <section class="perfil-card">
         <div class="perfil-grid">
           <label>Nome<input id="perfil-nome" class="campo" placeholder="Seu nome"></label>
@@ -67,15 +137,15 @@
           <label>WhatsApp<input id="perfil-whatsapp" class="campo" placeholder="(11) 99999-9999"></label>
           <label>Instagram<input id="perfil-instagram" class="campo" placeholder="@usuario"></label>
           <label>E-mail<input id="perfil-email" class="campo" type="email" placeholder="voce@email.com"></label>
-          <label>URL da foto<input id="perfil-foto" class="campo" placeholder="https://..."></label>
-          <label>URL do logo<input id="perfil-logo" class="campo" placeholder="https://..."></label>
+          <label class="advanced-field">URL da foto <span>opcional no beta</span><input id="perfil-foto" class="campo" placeholder="https://..."></label>
+          <label class="advanced-field">URL do logo <span>opcional no beta</span><input id="perfil-logo" class="campo" placeholder="https://..."></label>
         </div>
         <div class="cores-grid">
           <label>Cor principal<input id="perfil-cor-principal" type="color" value="#1f2e3f"></label>
           <label>Cor de destaque<input id="perfil-cor-secundaria" type="color" value="#c25b3a"></label>
           <label class="check-label"><input id="perfil-usar-cores" type="checkbox"> Aplicar minhas cores aos modelos</label>
         </div>
-        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Limpar personalização</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar minha marca</button></div>
+        <div class="perfil-acoes"><button class="btn btn-claro" onclick="restaurarPerfilPadrao()">Limpar personalização</button><button class="btn btn-verde" onclick="salvarPerfil()">Salvar alterações</button></div>
         <div id="perfil-status" class="status"></div>
       </section>
     </main>
@@ -85,12 +155,11 @@
     <div class="topbar no-print"><strong>Busca Certa · Revisão</strong><div class="acoes"><button class="btn btn-claro" onclick="voltarInicio()">← Links</button></div></div>
     <main class="wrap">
       <div class="painel-titulo">
-        <div><div class="eyebrow">Antes de compartilhar</div><h1>Deixe a seleção do jeito certo.</h1><p class="muted">Revise os imóveis, escolha até 12 visuais por imóvel e defina as duas imagens de destaque. Plantas ficam separadas quando a origem disponibiliza.</p></div>
+        <div><div class="eyebrow">Antes de compartilhar</div><h1>Deixe a seleção do jeito certo.</h1><p class="muted">Revise os imóveis, escolha até 12 visuais por imóvel e defina as duas imagens de destaque.</p></div>
         <div style="min-width:280px"><label class="eyebrow" for="nome-cliente">Preparada especialmente para</label><input id="nome-cliente" class="campo" placeholder="Nome do cliente" style="margin-top:5px"></div>
       </div>
-
       <section class="modelos-bloco">
-        <div class="modelos-head"><div><div class="eyebrow">Direção visual</div><h2>Escolha como apresentar</h2></div><span class="muted">A estrutura é a mesma. Cores, contraste e presença visual mudam.</span></div>
+        <div class="modelos-head"><div><div class="eyebrow">Direção visual</div><h2>Escolha como apresentar</h2></div><span class="muted">Seu modelo padrão já vem selecionado, mas você pode trocar nesta seleção.</span></div>
         <div class="modelos-grid">
           <button class="modelo-card" data-modelo="editorial" onclick="setModelo('editorial')"><span class="modelo-preview preview-editorial"><i></i><b></b><b></b></span><strong>Bordeaux</strong><small>Profundo, editorial e sofisticado. Bordeaux, verde hunter, sálvia e bone.</small><span class="bc-model-tag">Direção 01</span></button>
           <button class="modelo-card" data-modelo="clean" onclick="setModelo('clean')"><span class="modelo-preview preview-clean"><i></i><b></b><b></b></span><strong>Arquitetônico</strong><small>Claro, preciso e contemporâneo. Areia, azul profundo, oliva e terracota.</small><span class="bc-model-tag">Direção 02</span></button>
@@ -98,7 +167,6 @@
           <button class="modelo-card" data-modelo="minimal" onclick="setModelo('minimal')"><span class="modelo-preview preview-minimal"><i></i><b></b><b></b></span><strong>Sálvia</strong><small>Leve, acolhedor e refinado. Creme, rosé queimado, sálvia e terracota.</small><span class="bc-model-tag">Direção 04</span></button>
         </div>
       </section>
-
       <div id="lista-revisao"></div>
       <div class="revisao-rodape no-print"><button class="btn btn-claro" onclick="voltarInicio()">Voltar</button><button id="btn-aplicar" class="btn btn-verde">Ver seleção pronta</button></div>
     </main>
@@ -115,5 +183,6 @@
   </section>
 
   <script src="/pdf/v1.js"></script>
+  <script src="/onboarding.js"></script>
 </body>
 </html>

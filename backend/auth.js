@@ -9,6 +9,7 @@ import {
   getUserProfile,
   saveUserProfile,
 } from './db.js';
+import { registerMercadoPagoRoutes } from './mercadopago.js';
 
 const COOKIE = 'imovel_session';
 const SESSION_DAYS = 30;
@@ -72,6 +73,7 @@ export async function requireUser(req, res, next) {
   req.user = user; next();
 }
 export function registerAuthRoutes(app, { sanitizeProfile }) {
+  registerMercadoPagoRoutes(app);
   app.get('/api/auth/me', async (req, res) => {
     if (!productDbReady()) return res.status(503).json({ erro: 'Banco ainda não configurado.' });
     const user = await sessionUser(req);
