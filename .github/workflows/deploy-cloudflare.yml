@@ -28,6 +28,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           MERCADOPAGO_ACCESS_TOKEN: ${{ secrets.MERCADOPAGO_ACCESS_TOKEN }}
         run: printf '%s' "$MERCADOPAGO_ACCESS_TOKEN" | npx wrangler secret put MERCADOPAGO_ACCESS_TOKEN
+      - name: Sync admin secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUSCA_CERTA_ADMIN_TOKEN: ${{ secrets.BUSCA_CERTA_ADMIN_TOKEN }}
+        run: printf '%s' "$BUSCA_CERTA_ADMIN_TOKEN" | npx wrangler secret put BUSCA_CERTA_ADMIN_TOKEN
       - name: Deploy homolog to Cloudflare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
