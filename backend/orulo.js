@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
   'Accept-Language': 'pt-BR,pt;q=0.9',
@@ -33,7 +31,9 @@ function assertPilotEnabled() {
 
 async function getCredentials(url) {
   assertPilotEnabled();
-  const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 25000 });
+  const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(25000) });
+  if (!r.ok) throw new Error(`Falha ao carregar o link da Órulo (HTTP ${r.status}).`);
+  const html = await r.text();
   const pkMatch = html.match(/var\s+publicKey\s*=\s*['"]([^'"]+)['"]/);
   const idMatch = html.match(/var\s+building_id\s*=\s*(\d+)/);
 
@@ -54,11 +54,12 @@ async function getCredentials(url) {
 }
 
 async function apiGet(path, publicKey) {
-  const { data } = await axios.get(`https://www.orulo.com.br/api/v2${path}`, {
+  const r = await fetch(`https://www.orulo.com.br/api/v2${path}`, {
     headers: { ...HEADERS, Authorization: `Bearer ${publicKey}` },
-    timeout: 25000,
+    signal: AbortSignal.timeout(25000),
   });
-  return data;
+  if (!r.ok) throw new Error(`Órulo API HTTP ${r.status}`);
+  return r.json();
 }
 
 function listaDaResposta(data, chaves = []) {

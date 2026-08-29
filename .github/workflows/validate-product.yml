@@ -2,7 +2,7 @@ name: Validate product branch
 
 on:
   push:
-    branches: [produto-v1-review-pdf, busca-certa-visual]
+    branches: [produto-v1-review-pdf, busca-certa-visual, busca-certa-d1]
   pull_request:
     branches: [main]
 
@@ -42,15 +42,25 @@ jobs:
         run: |
           node --check server.js
           node --check pages.js
+          node --check pages-v2.js
+          node --check client-v2.js
+          node --check client-v4.js
+          node --check result-v2.js
           node --check auth.js
           node --check db.js
+          node --check d1.js
           node --check usage.js
           node --check orulo.js
           node --check scraper.js
           node --check claude.js
           node --check smoke-test.mjs
+          node --check visual-smoke-test.mjs
       - name: Check frontend JavaScript syntax
-        run: node --check ../frontend/v1.js
+        run: |
+          node --check ../frontend/v1.js
+          node --check ../frontend/qa-fixes.js
+      - name: Run visual model smoke test
+        run: node visual-smoke-test.mjs
       - name: Start test server
         run: |
           node server.js > /tmp/imoveis-server.log 2>&1 &
@@ -61,6 +71,12 @@ jobs:
           done
           cat /tmp/imoveis-server.log
           exit 1
+      - name: Check public pages
+        run: |
+          curl -fsS http://127.0.0.1:3001/ > /dev/null
+          curl -fsS http://127.0.0.1:3001/termos > /dev/null
+          curl -fsS http://127.0.0.1:3001/privacidade > /dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/planos)" = "302"
       - name: Run SaaS smoke test
         run: node smoke-test.mjs
       - name: Show server log on failure
