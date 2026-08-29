@@ -16,7 +16,6 @@ const fmtArea = (v) => {
   if (v == null) return null;
   const n = Number(v);
   if (!isFinite(n)) return null;
-  // 95.0 -> "95", 153.05 -> "153,05"
   return String(n).replace('.', ',').replace(/,0+$/, '');
 };
 
@@ -24,29 +23,33 @@ export function isOruloUrl(url) {
   return /orulo\.com\.br/i.test(url);
 }
 
-// Extrai building_id e publicKey da página de compartilhamento
-async function getCredentials(url) {
-  const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 25000 });
+function assertPilotEnabled() {
+  if (process.env.ORULO_SHARE_LINKS_ENABLED !== 'true') {
+    const e = new Error('Integração Órulo ainda não habilitada. Para o piloto, configure ORULO_SHARE_LINKS_ENABLED=true. Para uso comercial, use a integração oficial da Órulo.');
+    e.code = 'ORULO_OFFICIAL_INTEGRATION_REQUIRED';
+    throw e;
+  }
+}
 
+async function getCredentials(url) {
+  assertPilotEnabled();
+  const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 25000 });
   const pkMatch = html.match(/var\s+publicKey\s*=\s*['"]([^'"]+)['"]/);
   const idMatch = html.match(/var\s+building_id\s*=\s*(\d+)/);
 
-  // building_id também pode vir do JWT na URL (base64)
   let buildingId = idMatch ? idMatch[1] : null;
   if (!buildingId) {
     const jwtMatch = url.match(/jwt=([^&]+)/);
     if (jwtMatch) {
       try {
         const payload = jwtMatch[1].split('.')[1];
-        const decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+        const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
         buildingId = String(decoded.building_id);
       } catch {}
     }
   }
 
-  if (!buildingId || !pkMatch) {
-    throw new Error('Não foi possível ler credenciais do Órulo (publicKey/building_id).');
-  }
+  if (!buildingId || !pkMatch) throw new Error('Não foi possível ler os dados do link compartilhado da Órulo.');
   return { buildingId, publicKey: pkMatch[1] };
 }
 
@@ -58,7 +61,21 @@ async function apiGet(path, publicKey) {
   return data;
 }
 
-// Retorna objeto completo do imóvel, pronto para o frontend (sem passar pela IA)
+function listaDaResposta(data, chaves = []) {
+  if (Array.isArray(data)) return data;
+  for (const chave of chaves) if (Array.isArray(data?.[chave])) return data[chave];
+  return [];
+}
+
+function urlDeMidia(item) {
+  if (!item) return null;
+  if (typeof item === 'string') return item;
+  const dimensions = item.dimensions || item.urls || item.images || {};
+  return item['2280x1800'] || dimensions['2280x1800'] || item['1920x1080'] || dimensions['1920x1080'] || item['1024x1024'] || dimensions['1024x1024'] || item.url || item.image || item.src || null;
+}
+
+// Fluxo legado mantido apenas para homologação com a conta do corretor piloto.
+// O produto comercial deverá usar OAuth/credenciais oficiais da integração Órulo.
 export async function fetchOruloImovel(url) {
   const { buildingId, publicKey } = await getCredentials(url);
 
@@ -66,18 +83,15 @@ export async function fetchOruloImovel(url) {
     apiGet(`/buildings/${buildingId}`, publicKey),
     apiGet(`/buildings/${buildingId}/typologies`, publicKey),
     apiGet(`/buildings/${buildingId}/images?dimensions[]=2280x1800`, publicKey).catch(() => ({ images: [] })),
-    // Plantas são um recurso separado na API do Órulo. Mantemos separado das fotos
-    // para poder dar tratamento próprio no PDF e na etapa de revisão.
-    apiGet(`/buildings/${buildingId}/floor_plans?dimensions[]=1024x1024&dimensions[]=2280x1800`, publicKey)
-      .catch(() => ({ floor_plans: [] })),
+    apiGet(`/buildings/${buildingId}/floor_plans?dimensions[]=1024x1024&dimensions[]=2280x1800`, publicKey).catch(() => ({ floor_plans: [] })),
   ]);
 
   const addr = building.address || {};
   const enderecoPartes = [addr.street_type, addr.street, addr.number].filter(Boolean).join(' ');
   const cidadeEstado = [addr.city, addr.state].filter(Boolean).join('/');
 
-  // Tipologias — uma por linha
-  const tipologias = (tipoData.typologies || []).map((t) => ({
+  const tiposRaw = listaDaResposta(tipoData, ['typologies', 'items', 'data']);
+  const tipologias = tiposRaw.map((t) => ({
     tipo: t.type || 'Apartamento',
     area_util: fmtArea(t.private_area),
     area_total: null,
@@ -91,28 +105,37 @@ export async function fetchOruloImovel(url) {
     iptu: null,
   }));
 
-  // Remove duplicatas exatas (mesma área + preço)
-  const vistos = new Set();
+  const vistosTipos = new Set();
   const tipologiasUnicas = tipologias.filter((t) => {
     const chave = `${t.area_util}|${t.preco_venda}|${t.quartos}`;
-    if (vistos.has(chave)) return false;
-    vistos.add(chave);
+    if (vistosTipos.has(chave)) return false;
+    vistosTipos.add(chave);
     return true;
   });
 
-  const fotos = (imgData.images || [])
-    .map((i) => i['2280x1800'] || i.url)
-    .filter(Boolean);
+  const fotosVistas = new Set();
+  const fotos = listaDaResposta(imgData, ['images', 'items', 'data'])
+    .map(urlDeMidia)
+    .filter((u) => {
+      if (!u || fotosVistas.has(u)) return false;
+      fotosVistas.add(u);
+      return true;
+    });
 
-  const plantas = (floorData.floor_plans || [])
+  const plantasVistas = new Set();
+  const plantas = listaDaResposta(floorData, ['floor_plans', 'floorPlans', 'plans', 'items', 'data'])
     .map((p) => ({
-      id: p.id ?? null,
-      descricao: p.description || null,
-      tipo: p.type || null,
-      associations: p.associations || null,
-      url: p['2280x1800'] || p['1024x1024'] || p.url || null,
+      id: p?.id ?? null,
+      descricao: p?.description || p?.name || p?.title || null,
+      tipo: p?.type || null,
+      associations: p?.associations || p?.typologies || null,
+      url: urlDeMidia(p),
     }))
-    .filter((p) => p.url);
+    .filter((p) => {
+      if (!p.url || plantasVistas.has(p.url)) return false;
+      plantasVistas.add(p.url);
+      return true;
+    });
 
   return {
     codigo: building.id ? `ORL${building.id}` : null,

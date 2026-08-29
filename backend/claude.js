@@ -38,20 +38,18 @@ Retorne JSON com EXATAMENTE esta estrutura:
 
 IMPORTANTE sobre tipologias:
 - Crie UMA entrada por linha/variação de preço ou metragem que aparecer na página.
-- Se a página mostrar uma tabela com várias linhas (ex: R$ 1.785.821 / 95m² / 3 dorms, R$ 2.674.429 / 128m² / 3 dorms), crie um objeto para CADA linha.
-- O campo "tipo" deve descrever a variação: "3 Dorms · 95m²", "3 Dorms · 128m²", "4 Dorms · 153m²", etc.
-- Se o imóvel tiver UMA única unidade (apartamento usado, casa), crie um array com UM objeto.
+- Se a página mostrar uma tabela com várias linhas, crie um objeto para CADA linha.
+- O campo "tipo" deve descrever a variação, por exemplo: "3 Dorms · 95m²".
+- Se o imóvel tiver UMA única unidade, crie um array com UM objeto.
 - Nunca deixe o array vazio. Sempre extraia pelo menos uma tipologia.`;
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-export async function extractImovelData(text, url) {
+export async function extractImovelDataWithUsage(text, url) {
   const apiKey = (process.env.ANTHROPIC_API_KEY || '').replace(/\s/g, '');
-
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada');
 
   const client = new Anthropic({ apiKey });
-
   const MAX_TENTATIVAS = 4;
   let ultimoErro;
 
@@ -63,16 +61,22 @@ export async function extractImovelData(text, url) {
         messages: [{ role: 'user', content: PROMPT(text, url) }],
       });
 
-      const raw = message.content[0].text.trim();
+      const raw = message.content?.[0]?.text?.trim() || '';
       const json = raw.replace(/^```json?\n?/, '').replace(/\n?```$/, '');
-      return JSON.parse(json);
+      const data = JSON.parse(json);
+      const usage = {
+        input_tokens: Number(message.usage?.input_tokens || 0),
+        output_tokens: Number(message.usage?.output_tokens || 0),
+        cache_creation_input_tokens: Number(message.usage?.cache_creation_input_tokens || 0),
+        cache_read_input_tokens: Number(message.usage?.cache_read_input_tokens || 0),
+        model: message.model || 'claude-haiku-4-5-20251001',
+      };
+      return { data, usage };
     } catch (e) {
       ultimoErro = e;
       const status = e?.status || e?.response?.status;
-      // 529 = overloaded, 429 = rate limit, 500/503 = erro temporário do servidor
       const recuperavel = [429, 500, 503, 529].includes(status);
       if (!recuperavel || tentativa === MAX_TENTATIVAS) break;
-      // Espera crescente: 2s, 4s, 8s
       await sleep(2000 * Math.pow(2, tentativa - 1));
     }
   }
@@ -82,4 +86,9 @@ export async function extractImovelData(text, url) {
     throw new Error('Serviço da IA temporariamente sobrecarregado. Tente novamente em alguns instantes.');
   }
   throw ultimoErro;
+}
+
+export async function extractImovelData(text, url) {
+  const { data } = await extractImovelDataWithUsage(text, url);
+  return data;
 }
