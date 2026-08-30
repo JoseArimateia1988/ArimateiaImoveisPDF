@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { httpServerHandler } from 'cloudflare:node';
 import { setD1Binding } from './d1.js';
+import { savePaymentAccess } from './payments.js';
+import { findUserByEmail } from './db.js';
 
 setD1Binding(env.DB);
 await import('./server.js');
@@ -117,6 +119,22 @@ async function adminOverview(request) {
   }
 }
 
+async function adminGrantAccess(request) {
+  if (!adminAuthorized(request)) return Response.json({ error: 'Não autorizado.' }, { status: 401 });
+  try {
+    const body = await request.json().catch(() => ({}));
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return Response.json({ error: 'E-mail inválido.' }, { status: 400 });
+    const user = await findUserByEmail(email);
+    if (!user) return Response.json({ error: 'Não existe conta com esse e-mail.' }, { status: 404 });
+    await savePaymentAccess({ email, userId: user.id, status: 'authorized', amount: 0, currency: 'BRL', raw: { type: 'beta-grant', grantedAt: new Date().toISOString() } });
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error('Erro ao liberar acesso beta:', error);
+    return Response.json({ error: 'Não foi possível liberar o acesso.' }, { status: 500 });
+  }
+}
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -146,6 +164,12 @@ export default {
     }
     if (url.pathname === '/api/admin/overview') {
       return adminOverview(request);
+    }
+    if (url.pathname === '/api/admin/grant-access' && request.method === 'POST') {
+      return adminGrantAccess(request);
+    }
+    if (url.pathname === '/admin') {
+      return serveHtmlAsset('/admin.html', request, url);
     }
 
     if (

@@ -1,0 +1,29 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#152b22"><title>Admin | Busca Certa</title><style>body{margin:0;background:#fbf6ee;color:#1f2924;font-family:Inter,system-ui,-apple-system,sans-serif}.wrap{min-height:100vh;display:flex;justify-content:center;padding:40px 20px}.card{width:min(560px,100%);background:#fffdf8;border:1px solid #ddd2c3;border-radius:20px;padding:30px}.brand{display:flex;align-items:center;gap:10px;color:#152b22;font:500 20px Georgia,serif;text-decoration:none;margin-bottom:22px}.mark{width:30px;height:30px;border:1px solid #c4935f;border-radius:10px 10px 10px 3px;display:grid;place-items:center;color:#c66b3f;font:700 10px Inter,sans-serif}h1{font:500 24px Georgia,serif;margin:0 0 4px;color:#152b22}p{font-size:13px;color:#6f756f;line-height:1.5;margin:0 0 18px}label{display:block;font-size:11px;font-weight:800;color:#152b22;margin-top:12px}input{box-sizing:border-box;width:100%;margin-top:6px;height:44px;border:1px solid #ddd2c3;border-radius:9px;background:#fff;padding:0 12px;font:14px inherit;outline:none}.btn{margin-top:16px;height:44px;border:0;border-radius:9px;background:#c66b3f;color:#fff;font:800 12px inherit;cursor:pointer;padding:0 18px}.btn:disabled{opacity:.6;cursor:wait}.status{min-height:18px;margin-top:10px;font-size:12px}.status.erro{color:#a13b2b}.status.ok{color:#1f6b3e}.section{border-top:1px solid #eee4d7;margin-top:22px;padding-top:18px}</style></head><body><main class="wrap"><section class="card">
+<a class="brand" href="/"><span class="mark">BC</span>Busca Certa · Admin</a>
+<h1>Liberar acesso (beta)</h1>
+<p>Ativa a assinatura de um e-mail que já tem conta no Busca Certa, sem passar pelo Mercado Pago — pra testers convidados.</p>
+<label for="token">Token de admin</label>
+<input id="token" type="password" placeholder="Cole o BUSCA_CERTA_ADMIN_TOKEN">
+<label for="email">E-mail da conta</label>
+<input id="email" type="email" placeholder="pessoa@email.com">
+<button id="btn" class="btn">Liberar acesso</button>
+<div id="status" class="status"></div>
+</section></main>
+<script>
+const btn=document.getElementById('btn'),status=document.getElementById('status');
+btn.addEventListener('click',async()=>{
+  const token=document.getElementById('token').value.trim();
+  const email=document.getElementById('email').value.trim();
+  status.textContent='';status.className='status';
+  if(!token||!email){status.textContent='Preencha o token e o e-mail.';status.className='status erro';return}
+  btn.disabled=true;btn.textContent='Liberando...';
+  try{
+    const r=await fetch('/api/admin/grant-access',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({email})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Não foi possível liberar.');
+    status.textContent='Acesso liberado para '+email+'.';status.className='status ok';
+  }catch(err){status.textContent=err.message;status.className='status erro'}
+  finally{btn.disabled=false;btn.textContent='Liberar acesso'}
+});
+</script>
+</body></html>
