@@ -63,6 +63,7 @@ async function go(){
   try{
     const r=await fetch('/api/mercadopago/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:plano,coupon})});
     const d=await r.json();
+    if(d.jaAssinante){s.style.color='#1f6b3e';s.textContent='Você já tem uma assinatura ativa. Redirecionando para o painel...';setTimeout(()=>{location.href='/app'},1200);return}
     if(!r.ok||!d.checkout_url)throw new Error(d.erro||'Não foi possível iniciar a assinatura.');
     location.href=d.checkout_url;
   }catch(err){

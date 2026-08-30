@@ -71,6 +71,12 @@ export function registerMercadoPagoRoutes(app, { requireUser }) {
     const kind = couponCode ? COUPONS[couponCode].plan : (PLAN_DEFS[requestedPlan] ? requestedPlan : 'mensal');
     const amount = PLAN_DEFS[kind].amount;
     try {
+      // Nunca rebaixa uma assinatura já ativa pra 'pending' — só reinicia checkout
+      // pra quem de fato não tem assinatura ativa ainda.
+      const existente = (await getPaymentAccessByUserId(req.user.id)) || await getPaymentAccess(email);
+      if (existente && ACTIVE_STATUSES.has(String(existente.status || '').toLowerCase())) {
+        return res.status(409).json({ erro: 'Você já tem uma assinatura ativa.', jaAssinante: true });
+      }
       const plan = await ensurePlan(kind);
       await savePaymentAccess({ email, userId: req.user.id, status: 'pending', preferenceId: plan.plan_id, amount, currency: 'BRL', raw: { type: 'subscription-plan', plan: kind, coupon: couponCode || null, repetitions: PLAN_DEFS[kind].repetitions } });
       // O e-mail vai preenchido no link do Mercado Pago só pra reduzir atrito no checkout —
