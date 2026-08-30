@@ -13,12 +13,12 @@
         atual:imoveisAtual||[],
         tela:document.querySelector('.tela.ativa')?.id||''
       };
-      sessionStorage.setItem(DRAFT_KEY,JSON.stringify(payload));
+      localStorage.setItem(DRAFT_KEY,JSON.stringify(payload));
     }catch{}
   };
   const restaurarRascunho=()=>{
     try{
-      const raw=sessionStorage.getItem(DRAFT_KEY);if(!raw)return false;
+      const raw=localStorage.getItem(DRAFT_KEY);if(!raw)return false;
       const d=JSON.parse(raw);
       if(document.getElementById('campo-urls'))document.getElementById('campo-urls').value=d.urls||'';
       if(document.getElementById('nome-cliente'))document.getElementById('nome-cliente').value=d.cliente||'';

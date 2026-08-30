@@ -6,12 +6,21 @@ const HEADERS = {
   'Accept-Language': 'pt-BR,pt;q=0.9',
 };
 
+// Extrai um "código de imóvel" de portais que namespaceiam URLs por anúncio
+// (ex.: lopes.com.br/imovel/REO1139645/... e as próprias fotos em
+// .../realestate/med/REO1139645/xxx.jpg). Usado pra separar fotos do imóvel
+// certo de fotos de "imóveis similares" que a mesma página carrega.
+function extrairCodigoImovel(url) {
+  const m = String(url).match(/[/-]([A-Z]{2,6}\d{4,})(?:[/?&._-]|$)/);
+  return m ? m[1] : null;
+}
+
 function extrairImagens($, url, html) {
   const images = [];
   const add = (src) => {
     if (!src) return;
     if (!/\.(jpg|jpeg|png|webp)/i.test(src)) return;
-    if (/icon|logo|sprite|placeholder/i.test(src)) return;
+    if (/icon|logo|sprite|placeholder|banner|financ|default[_-]?image|profile[_-]?default|avatar/i.test(src)) return;
     const absolute = src.startsWith('http') ? src : new URL(src, url).href;
     if (!images.includes(absolute)) images.push(absolute);
   };
@@ -49,7 +58,24 @@ function extrairImagens($, url, html) {
     ['data-background','data-bg','data-photo','data-image-url'].forEach(a => add($(el).attr(a)));
   });
 
-  return images.slice(0, 30);
+  // Se o site namespaceia fotos por código do imóvel e a maioria das imagens
+  // encontradas de fato carrega esse código, descarta só as que trazem OUTRO
+  // código explícito — sinal de que vieram de "imóveis similares"/carrosséis
+  // de outros anúncios na mesma página. Não filtra nada se o padrão não
+  // aparecer com força suficiente, pra não quebrar sites sem essa convenção.
+  const codigo = extrairCodigoImovel(url);
+  let resultado = images;
+  if (codigo) {
+    const mesmoCodigo = images.filter(u => u.includes(codigo));
+    if (mesmoCodigo.length >= Math.max(3, Math.ceil(images.length * 0.4))) {
+      resultado = images.filter(u => {
+        const m = extrairCodigoImovel(u);
+        return !m || m === codigo;
+      });
+    }
+  }
+
+  return resultado.slice(0, 30);
 }
 
 export async function fetchPageContent(url) {
