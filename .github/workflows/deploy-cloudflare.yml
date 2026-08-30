@@ -29,7 +29,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           if [ -n "$ANTHROPIC_API_KEY" ]; then
-            printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY
+            printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler versions secret put ANTHROPIC_API_KEY
           else
             echo "ANTHROPIC_API_KEY não configurado nos secrets do GitHub — pulando (não sobrescreve o valor já publicado)."
           fi
@@ -40,7 +40,7 @@ jobs:
           MERCADOPAGO_ACCESS_TOKEN: ${{ secrets.MERCADOPAGO_ACCESS_TOKEN }}
         run: |
           if [ -n "$MERCADOPAGO_ACCESS_TOKEN" ]; then
-            printf '%s' "$MERCADOPAGO_ACCESS_TOKEN" | npx wrangler secret put MERCADOPAGO_ACCESS_TOKEN
+            printf '%s' "$MERCADOPAGO_ACCESS_TOKEN" | npx wrangler versions secret put MERCADOPAGO_ACCESS_TOKEN
           else
             echo "MERCADOPAGO_ACCESS_TOKEN não configurado nos secrets do GitHub — pulando (não sobrescreve o valor já publicado)."
           fi
@@ -51,7 +51,7 @@ jobs:
           MERCADOPAGO_WEBHOOK_SECRET: ${{ secrets.MERCADOPAGO_WEBHOOK_SECRET }}
         run: |
           if [ -n "$MERCADOPAGO_WEBHOOK_SECRET" ]; then
-            printf '%s' "$MERCADOPAGO_WEBHOOK_SECRET" | npx wrangler secret put MERCADOPAGO_WEBHOOK_SECRET
+            printf '%s' "$MERCADOPAGO_WEBHOOK_SECRET" | npx wrangler versions secret put MERCADOPAGO_WEBHOOK_SECRET
           else
             echo "MERCADOPAGO_WEBHOOK_SECRET não configurado nos secrets do GitHub — a assinatura do webhook fica sem validar até isso ser configurado."
           fi
@@ -62,7 +62,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           if [ -n "$RESEND_API_KEY" ]; then
-            printf '%s' "$RESEND_API_KEY" | npx wrangler secret put RESEND_API_KEY
+            printf '%s' "$RESEND_API_KEY" | npx wrangler versions secret put RESEND_API_KEY
           else
             echo "RESEND_API_KEY não configurado nos secrets do GitHub — pulando (não sobrescreve o valor já publicado)."
           fi
@@ -73,7 +73,7 @@ jobs:
           BUSCA_CERTA_EMAIL: ${{ secrets.BUSCA_CERTA_EMAIL }}
         run: |
           if [ -n "$BUSCA_CERTA_EMAIL" ]; then
-            printf 'Busca Certa <%s>' "$BUSCA_CERTA_EMAIL" | npx wrangler secret put EMAIL_FROM
+            printf 'Busca Certa <%s>' "$BUSCA_CERTA_EMAIL" | npx wrangler versions secret put EMAIL_FROM
           else
             echo "BUSCA_CERTA_EMAIL não configurado nos secrets do GitHub — pulando (não sobrescreve o valor já publicado)."
           fi
@@ -84,7 +84,7 @@ jobs:
           BUSCA_CERTA_ADMIN_TOKEN: ${{ secrets.BUSCA_CERTA_ADMIN_TOKEN }}
         run: |
           if [ -n "$BUSCA_CERTA_ADMIN_TOKEN" ]; then
-            printf '%s' "$BUSCA_CERTA_ADMIN_TOKEN" | npx wrangler secret put BUSCA_CERTA_ADMIN_TOKEN
+            printf '%s' "$BUSCA_CERTA_ADMIN_TOKEN" | npx wrangler versions secret put BUSCA_CERTA_ADMIN_TOKEN
           else
             echo "BUSCA_CERTA_ADMIN_TOKEN não configurado nos secrets do GitHub — pulando (não sobrescreve o valor já publicado)."
           fi
