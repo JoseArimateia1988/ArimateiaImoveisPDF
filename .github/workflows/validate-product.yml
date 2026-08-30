@@ -28,6 +28,7 @@ jobs:
       DATABASE_SSL: "false"
       NODE_ENV: test
       ORULO_SHARE_LINKS_ENABLED: "false"
+      ENABLE_TEST_ENDPOINTS: "true"
     defaults:
       run:
         working-directory: backend
@@ -92,7 +93,7 @@ jobs:
           DATABASE_SSL: ""
           NODE_ENV: ""
         run: |
-          npx wrangler dev --ip 127.0.0.1 --port 8787 > /tmp/wrangler.log 2>&1 &
+          npx wrangler dev --ip 127.0.0.1 --port 8787 --var ENABLE_TEST_ENDPOINTS:true > /tmp/wrangler.log 2>&1 &
           echo $! > /tmp/wrangler.pid
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:8787/health > /dev/null; then exit 0; fi

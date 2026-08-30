@@ -106,6 +106,19 @@ export function registerMercadoPagoRoutes(app, { requireUser }) {
     } catch (e) { console.error('Erro no webhook Mercado Pago:', e.message, e.details || ''); }
   });
 
+  // Só existe quando ENABLE_TEST_ENDPOINTS=true (setado via --var só nos jobs de CI,
+  // nunca no wrangler.jsonc/secrets de produção). Deixa o smoke test simular uma
+  // assinatura aprovada sem depender de um token real do Mercado Pago nem de acesso
+  // direto ao banco — funciona igual em Postgres (CI) e D1 (Worker local do CI).
+  if (process.env.ENABLE_TEST_ENDPOINTS === 'true') {
+    app.post('/api/mercadopago/_test/activate', requireUser, async (req, res) => {
+      try {
+        await savePaymentAccess({ email: req.user.email, userId: req.user.id, status: 'authorized', amount: PRICE_MENSAL, currency: 'BRL', raw: { type: 'test-activation' } });
+        res.json({ ok: true });
+      } catch (e) { console.error('Erro ao ativar assinatura de teste:', e.message); res.status(500).json({ erro: 'Não foi possível ativar a assinatura de teste.' }); }
+    });
+  }
+
   app.get('/api/mercadopago/status', requireUser, async (req, res) => {
     try {
       const byUser = await getPaymentAccessByUserId(req.user.id);

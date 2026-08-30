@@ -1,21 +1,5 @@
-import pg from 'pg';
-
 const BASE = process.env.TEST_BASE_URL || 'http://127.0.0.1:3001';
 const EXPECTED_DATABASE = process.env.EXPECTED_DATABASE || 'postgres';
-
-// Simula uma assinatura aprovada direto no banco — o smoke test não tem um token
-// real do Mercado Pago pra passar pelo checkout de verdade.
-async function ativarAssinaturaDeTeste(email, userId) {
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false } });
-  try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS payment_access (email TEXT PRIMARY KEY,user_id UUID,status TEXT NOT NULL DEFAULT 'pending',payment_id TEXT,preference_id TEXT,amount REAL,currency TEXT,raw JSONB,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-    await pool.query(
-      `INSERT INTO payment_access (email,user_id,status,amount,currency,updated_at) VALUES ($1,$2,'authorized',39.90,'BRL',NOW())
-       ON CONFLICT(email) DO UPDATE SET status='authorized',user_id=EXCLUDED.user_id,updated_at=NOW()`,
-      [email, userId]
-    );
-  } finally { await pool.end(); }
-}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -63,7 +47,7 @@ console.log('4. bloqueado sem assinatura ativa');
 await request('/api/salvar', { method: 'POST', cookie: cookieA, body: { imoveis: [], cliente: 'x', modelo: 'bold' }, expected: 402 });
 
 console.log('4b. ativa assinatura de teste e libera o acesso');
-await ativarAssinaturaDeTeste(emailA, regA.data.user.id);
+await request('/api/mercadopago/_test/activate', { method: 'POST', cookie: cookieA, expected: 200 });
 const statusA = await request('/api/mercadopago/status', { cookie: cookieA, expected: 200 });
 assert(statusA.data.active === true, 'Assinatura de teste não ficou ativa');
 
