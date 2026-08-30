@@ -8,12 +8,12 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY;
 let pool = null;
 let schemaReady = false;
 
-function getPool() {
+export function getPool() {
   if (!DATABASE_URL) return null;
   if (!pool) pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }, max: Number(process.env.DATABASE_POOL_MAX || 5) });
   return pool;
 }
-function requireProductDb() {
+export function requireProductDb() {
   const p = getPool();
   if (p) return { mode:'postgres', p };
   if (d1Configured()) return { mode:'d1', p:null };
@@ -32,6 +32,8 @@ export async function ensureSchema() {
     await p.query(`CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await p.query(`CREATE TABLE IF NOT EXISTS user_profiles (user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,data JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await p.query(`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY,user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await p.query(`CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY,user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at TIMESTAMPTZ NOT NULL,used_at TIMESTAMPTZ NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await p.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)`);
     await p.query(`CREATE TABLE IF NOT EXISTS presentations (id VARCHAR(16) PRIMARY KEY,user_id UUID NULL,client_name TEXT NULL,template TEXT NOT NULL DEFAULT 'editorial',profile JSONB NOT NULL DEFAULT '{}'::jsonb,payload JSONB NOT NULL,votes JSONB NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS user_id UUID NULL`);
     await p.query(`ALTER TABLE presentations ADD COLUMN IF NOT EXISTS client_name TEXT NULL`);
@@ -48,6 +50,8 @@ export async function ensureSchema() {
     `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS user_profiles (user_id TEXT PRIMARY KEY,data TEXT NOT NULL DEFAULT '{}',created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires_at TEXT NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires_at TEXT NOT NULL,used_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)`,
     `CREATE TABLE IF NOT EXISTS presentations (id TEXT PRIMARY KEY,user_id TEXT,client_name TEXT,template TEXT NOT NULL DEFAULT 'editorial',profile TEXT NOT NULL DEFAULT '{}',payload TEXT NOT NULL,votes TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE INDEX IF NOT EXISTS idx_presentations_created_at ON presentations(created_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_presentations_user_id ON presentations(user_id)`,
@@ -76,6 +80,29 @@ export async function getSessionUser(tokenHash){const db=requireProductDb();awai
 export async function deleteSession(tokenHash){const db=requireProductDb();await ensureSchema();if(db.mode==='postgres')await db.p.query(`DELETE FROM sessions WHERE token_hash=$1`,[tokenHash]);else await d1Query(`DELETE FROM sessions WHERE token_hash=?`,[tokenHash]);}
 export async function getUserProfile(userId){const db=requireProductDb();await ensureSchema();if(db.mode==='postgres'){const{rows}=await db.p.query(`SELECT data FROM user_profiles WHERE user_id=$1 LIMIT 1`,[userId]);return rows[0]?.data||{};}const{rows}=await d1Query(`SELECT data FROM user_profiles WHERE user_id=? LIMIT 1`,[userId]);return j(rows[0]?.data,{});}
 export async function saveUserProfile(userId,profile){const db=requireProductDb();await ensureSchema();if(db.mode==='postgres'){await db.p.query(`INSERT INTO user_profiles (user_id,data,updated_at) VALUES ($1,$2::jsonb,NOW()) ON CONFLICT (user_id) DO UPDATE SET data=EXCLUDED.data,updated_at=NOW()`,[userId,JSON.stringify(profile||{})]);}else{await d1Query(`INSERT INTO user_profiles (user_id,data,updated_at) VALUES (?,?,CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data,updated_at=CURRENT_TIMESTAMP`,[userId,JSON.stringify(profile||{})]);}return profile||{};}
+
+export async function setUserPassword(userId,passwordHash){const db=requireProductDb();await ensureSchema();if(db.mode==='postgres')await db.p.query(`UPDATE users SET password_hash=$2,updated_at=NOW() WHERE id=$1`,[userId,passwordHash]);else await d1Query(`UPDATE users SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`,[passwordHash,userId]);}
+export async function createPasswordResetToken({tokenHash,userId,expiresAt}){const db=requireProductDb();await ensureSchema();if(db.mode==='postgres'){await db.p.query(`DELETE FROM password_reset_tokens WHERE user_id=$1 AND used_at IS NULL`,[userId]);await db.p.query(`INSERT INTO password_reset_tokens (token_hash,user_id,expires_at) VALUES ($1,$2,$3)`,[tokenHash,userId,expiresAt]);return;}await d1Query(`DELETE FROM password_reset_tokens WHERE user_id=? AND used_at IS NULL`,[userId]);await d1Query(`INSERT INTO password_reset_tokens (token_hash,user_id,expires_at) VALUES (?,?,?)`,[tokenHash,userId,expiresAt.toISOString()]);}
+export async function consumePasswordResetToken(tokenHash){
+  const db=requireProductDb();await ensureSchema();
+  if(db.mode==='postgres'){
+    const client=await db.p.connect();
+    try{
+      await client.query('BEGIN');
+      const{rows}=await client.query(`SELECT user_id,expires_at,used_at FROM password_reset_tokens WHERE token_hash=$1 LIMIT 1 FOR UPDATE`,[tokenHash]);
+      const row=rows[0];
+      if(!row||row.used_at||new Date(row.expires_at)<=new Date()){await client.query('ROLLBACK');return null;}
+      await client.query(`UPDATE password_reset_tokens SET used_at=NOW() WHERE token_hash=$1`,[tokenHash]);
+      await client.query('COMMIT');
+      return{userId:row.user_id};
+    }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
+  }
+  const{rows}=await d1Query(`SELECT user_id,expires_at,used_at FROM password_reset_tokens WHERE token_hash=? LIMIT 1`,[tokenHash]);
+  const row=rows[0];
+  if(!row||row.used_at||new Date(row.expires_at)<=new Date())return null;
+  await d1Query(`UPDATE password_reset_tokens SET used_at=CURRENT_TIMESTAMP WHERE token_hash=?`,[tokenHash]);
+  return{userId:row.user_id};
+}
 
 export async function savePresentation({id,imoveis,cliente=null,modelo='editorial',perfil={},userId=null}){
   const p=getPool();

@@ -23,7 +23,9 @@
         <h2 class="bc-serif auth-title">Acesse sua conta</h2>
         <label class="field-label">E-mail<input id="login-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com"></label>
         <label class="field-label">Senha<input id="login-senha" class="campo" type="password" autocomplete="current-password" placeholder="Sua senha"></label>
+        <p class="auth-switch" style="margin-top:-6px"><a href="#" id="link-esqueci-senha">Esqueci minha senha</a></p>
         <div id="login-erro" class="status erro"></div>
+        <div id="esqueci-status" class="status"></div>
         <button id="btn-login" class="btn btn-verde btn-full">Entrar</button>
         <button id="btn-criar-conta" type="button" hidden></button>
         <p class="auth-switch">Ainda não tem conta? <a href="/cadastro">Criar conta</a></p>
@@ -43,7 +45,7 @@
         <div class="eyebrow">Criar conta</div>
         <h2 class="bc-serif auth-title">Comece por aqui</h2>
         <label class="field-label">Seu nome<input id="cadastro-nome" class="campo" autocomplete="name" placeholder="Como você quer aparecer nas seleções"></label>
-        <label class="field-label">E-mail<input id="cadastro-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com"></label>
+        <label class="field-label">E-mail de acesso<input id="cadastro-email" class="campo" type="email" autocomplete="email" placeholder="seu@email.com"><small class="field-hint">Você vai usar este e-mail para entrar na sua conta e recuperar sua senha.</small></label>
         <label class="field-label">Senha<input id="cadastro-senha" class="campo" type="password" autocomplete="new-password" placeholder="Mínimo de 8 caracteres"></label>
         <label class="field-label">Confirmar senha<input id="cadastro-senha-confirmar" class="campo" type="password" autocomplete="new-password" placeholder="Repita sua senha"></label>
         <div id="cadastro-erro" class="status erro"></div>

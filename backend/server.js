@@ -9,6 +9,7 @@ import { extractImovelDataWithUsage } from './claude.js';
 import { isOruloUrl, fetchOruloImovel } from './orulo.js';
 import { databaseMode, ensureSchema, savePresentation, getPresentation, listPresentations, saveVotes } from './db.js';
 import { registerAuthRoutes, requireUser } from './auth.js';
+import { hasActiveSubscription } from './mercadopago.js';
 import { recordUsage, usageSummary } from './usage.js';
 import { errorPage } from './pages-v2.js';
 import { clientPageV4 } from './client-v4.js';
@@ -38,6 +39,17 @@ function requireNamedProfile(req,res,next){
   const p=safeProfile(req.user?.profile||{});
   if(!p.nome)return res.status(422).json({erro:'Complete o nome do corretor em Minha marca antes de continuar.'});
   next();
+}
+// Fecha a lacuna: conta ativa não é o mesmo que assinatura ativa. Bloqueia só o que PRODUZ
+// (extrair/salvar) — a pessoa continua podendo entrar, ver perfil/histórico e assinar.
+async function requireActiveSubscription(req,res,next){
+  try{
+    if(await hasActiveSubscription(req.user)) return next();
+    res.status(402).json({erro:'Sua assinatura não está ativa. Assine para continuar gerando seleções.',assinatura:'inativa'});
+  }catch(e){
+    console.error('Erro ao checar assinatura:',e.message);
+    res.status(500).json({erro:'Não foi possível confirmar sua assinatura.'});
+  }
 }
 registerAuthRoutes(app,{sanitizeProfile:safeProfile});
 
@@ -110,7 +122,7 @@ if(frontendDir){
 }
 app.get('/planos',(_,res)=>res.redirect('/#precos'));
 
-app.post('/api/extrair',requireUser,requireNamedProfile,async(req,res)=>{
+app.post('/api/extrair',requireUser,requireNamedProfile,requireActiveSubscription,async(req,res)=>{
   const urls=req.body?.urls;
   if(!Array.isArray(urls)||!urls.length)return res.status(400).json({erro:'Envie pelo menos uma URL.'});
   if(urls.length>50)return res.status(400).json({erro:'Envie no máximo 50 URLs por vez.'});
@@ -132,7 +144,7 @@ app.post('/api/extrair',requireUser,requireNamedProfile,async(req,res)=>{
 
 app.get('/health',(_,res)=>res.json({status:'ok',database:databaseMode()}));
 app.get('/api/usage',requireUser,async(req,res)=>{try{res.json(await usageSummary(req.user.id,{days:Number(req.query.days||30)}))}catch(e){console.error('Erro ao ler uso:',e.message);res.status(500).json({erro:'Não foi possível carregar o uso.'})}});
-app.post('/api/salvar',requireUser,requireNamedProfile,async(req,res)=>{const{imoveis,cliente,modelo}=req.body||{};if(!Array.isArray(imoveis)||!imoveis.length)return res.status(400).json({erro:'Apresentação vazia.'});const id=randomUUID().replace(/-/g,'').slice(0,16);try{await savePresentation({id,imoveis,cliente:String(cliente||'').trim().slice(0,120)||null,modelo:MODELOS.has(modelo)?modelo:'editorial',perfil:safeProfile(req.user.profile||{}),userId:req.user.id});res.json({id})}catch(e){console.error('Erro ao salvar apresentação:',e.message);res.status(500).json({erro:'Erro ao salvar apresentação.'})}});
+app.post('/api/salvar',requireUser,requireNamedProfile,requireActiveSubscription,async(req,res)=>{const{imoveis,cliente,modelo}=req.body||{};if(!Array.isArray(imoveis)||!imoveis.length)return res.status(400).json({erro:'Apresentação vazia.'});const id=randomUUID().replace(/-/g,'').slice(0,16);try{await savePresentation({id,imoveis,cliente:String(cliente||'').trim().slice(0,120)||null,modelo:MODELOS.has(modelo)?modelo:'editorial',perfil:safeProfile(req.user.profile||{}),userId:req.user.id});res.json({id})}catch(e){console.error('Erro ao salvar apresentação:',e.message);res.status(500).json({erro:'Erro ao salvar apresentação.'})}});
 
 function resumo(imoveis){const ok=(imoveis||[]).filter(i=>i?.ok).map(i=>i.dados),d=ok[0]||{};return{n:ok.length,titulo:d.titulo||null,foto:(d.fotos||[]).find(Boolean)||null,local:[d.bairro,d.cidade].filter(Boolean).join(' · ')||null,preco:d.preco_venda||d.preco_aluguel||(d.tipologias||[]).map(t=>t.preco_venda||t.preco_aluguel).find(Boolean)||null}}
 app.get('/api/apresentacoes',requireUser,async(req,res)=>{try{const rows=await listPresentations({userId:req.user.id,limit:150});res.json(rows.map(r=>({id:r.id,cliente:r.cliente||null,modelo:r.modelo||'editorial',criado_em:r.criado_em||null,resumo:resumo(r.imoveis||[])})))}catch(e){console.error('Erro ao listar apresentações:',e.message);res.status(500).json({erro:'Não foi possível carregar o histórico.'})}});

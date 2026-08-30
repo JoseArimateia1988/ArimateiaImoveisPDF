@@ -1,4 +1,3 @@
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 const HEADERS = {
@@ -54,7 +53,11 @@ function extrairImagens($, url, html) {
 }
 
 export async function fetchPageContent(url) {
-  const { data: html } = await axios.get(url, { headers: HEADERS, timeout: 15000 });
+  // Usa fetch nativo para manter compatibilidade com Cloudflare Workers.
+  // O adapter fetch do Axios envia cache="default", modo não aceito pelo runtime do Worker.
+  const r = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`Falha ao carregar a página (HTTP ${r.status}).`);
+  const html = await r.text();
   const $ = cheerio.load(html);
 
   // Remove noise

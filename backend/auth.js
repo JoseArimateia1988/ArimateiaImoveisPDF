@@ -8,8 +8,12 @@ import {
   deleteSession,
   getUserProfile,
   saveUserProfile,
+  setUserPassword,
+  createPasswordResetToken,
+  consumePasswordResetToken,
 } from './db.js';
 import { registerMercadoPagoRoutes } from './mercadopago.js';
+import { sendEmail, emailReady, redefinirSenhaEmail } from './email.js';
 
 const COOKIE = 'imovel_session';
 const SESSION_DAYS = 30;
@@ -72,8 +76,10 @@ export async function requireUser(req, res, next) {
   if (!user) return res.status(401).json({ erro: 'Faça login para continuar.' });
   req.user = user; next();
 }
+function appUrl() { return String(process.env.APP_URL || 'https://busca.moodlabs.com.br').replace(/\/$/, ''); }
+
 export function registerAuthRoutes(app, { sanitizeProfile }) {
-  registerMercadoPagoRoutes(app);
+  registerMercadoPagoRoutes(app, { requireUser });
   app.get('/api/auth/me', async (req, res) => {
     if (!productDbReady()) return res.status(503).json({ erro: 'Banco ainda não configurado.' });
     const user = await sessionUser(req);
@@ -116,6 +122,42 @@ export function registerAuthRoutes(app, { sanitizeProfile }) {
     const token = cookies(req)[COOKIE];
     if (token && productDbReady()) { try { await deleteSession(hashToken(token)); } catch {} }
     clearSessionCookie(res); res.json({ ok: true });
+  });
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    if (!productDbReady()) return res.status(503).json({ erro: 'Banco ainda não configurado.' });
+    const email = normalizeEmail(req.body?.email);
+    // Resposta genérica sempre — não revela se o e-mail existe na base.
+    const generic = { ok: true, mensagem: 'Se este e-mail tiver uma conta, enviamos um link para redefinir a senha.' };
+    if (!validEmail(email)) return res.json(generic);
+    try {
+      const user = await findUserByEmail(email);
+      if (user) {
+        const token = randomBytes(32).toString('base64url');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        await createPasswordResetToken({ tokenHash: hashToken(token), userId: user.id, expiresAt });
+        const resetUrl = `${appUrl()}/redefinir-senha?token=${encodeURIComponent(token)}`;
+        if (emailReady()) await sendEmail({ to: email, subject: 'Redefinir sua senha — Busca Certa', html: redefinirSenhaEmail({ resetUrl }) });
+        else console.warn('RESEND_API_KEY ausente — link de redefinição para', email, ':', resetUrl);
+      }
+    } catch (e) { console.error('Erro ao solicitar redefinição de senha:', e.message); }
+    res.json(generic);
+  });
+  app.post('/api/auth/reset-password', async (req, res) => {
+    if (!productDbReady()) return res.status(503).json({ erro: 'Banco ainda não configurado.' });
+    const token = String(req.body?.token || ''), password = String(req.body?.password || '');
+    if (!token) return res.status(400).json({ erro: 'Link inválido.' });
+    if (password.length < 8) return res.status(400).json({ erro: 'A senha precisa ter pelo menos 8 caracteres.' });
+    if (password.length > 200) return res.status(400).json({ erro: 'Senha inválida.' });
+    try {
+      const consumed = await consumePasswordResetToken(hashToken(token));
+      if (!consumed) return res.status(400).json({ erro: 'Este link expirou ou já foi usado.' });
+      await setUserPassword(consumed.userId, hashPassword(password));
+      await openSession(res, consumed.userId);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('Erro ao redefinir senha:', e.message);
+      res.status(500).json({ erro: 'Não foi possível redefinir a senha.' });
+    }
   });
   app.get('/api/profile', requireUser, async (req, res) => {
     try { res.json({ profile: sanitizeProfile(await getUserProfile(req.user.id)) }); }

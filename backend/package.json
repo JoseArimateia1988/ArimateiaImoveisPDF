@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "axios": "^1.7.0",
     "body-parser": "^2.3.0",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",

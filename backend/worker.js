@@ -30,15 +30,19 @@ async function serveLanding(request, url) {
   const { text: original, headers } = await htmlAssetText('/landing.html', request, url);
   let text = original;
 
-  text = text.replace('href="/pdf">Entrar', 'href="/login">Entrar');
-  text = text.replaceAll('href="/pdf"', 'href="/pagar"');
+  // Substituições específicas de cada card ANTES do replaceAll genérico de /pdf,
+  // senão o replaceAll consome os hrefs e essas buscas deixam de casar (bug já visto uma vez).
   text = text.replace('R$ 29,90<span>/mês</span>', 'R$ 39,90<span>/mês</span>');
   text = text.replace(
-    '<article class="plan featured"><small>Mais econômico · anual</small><strong>R$ 23,90<span>/mês</span></strong><span>R$ 286,80 cobrados por ano</span><ul><li>Tudo do plano</li><li>Mesma experiência completa</li><li>Economia ao longo do ano</li><li>Histórico das seleções</li><li>Identidade do corretor</li></ul><a class="btn btn-primary" href="/pagar">Escolher anual</a></article>',
-    '<article class="plan featured"><small>Beta por convite</small><strong>R$ 10<span>/mês</span></strong><span>Valor especial durante a fase beta</span><ul><li>Tudo do plano mensal</li><li>Uso real durante a fase beta</li><li>Feedback direto sobre a experiência</li><li>Histórico das seleções</li><li>Identidade do corretor</li></ul><a class="btn btn-primary" href="/pagar">Usar meu cupom beta</a></article>'
+    '<article class="plan featured"><small>Mais econômico · anual</small><strong>R$ 23,90<span>/mês</span></strong><span>R$ 286,80 cobrados por ano</span><ul><li>Tudo do plano</li><li>Mesma experiência completa</li><li>Economia ao longo do ano</li><li>Histórico das seleções</li><li>Identidade do corretor</li></ul><a class="btn btn-primary" href="/pdf">Escolher anual</a></article>',
+    '<article class="plan featured"><small>Mais econômico · anual</small><strong>R$ 359<span>/ano</span></strong><span>Cobrança única anual — equivale a ~R$ 29,90/mês</span><ul><li>Tudo do plano mensal</li><li>Mesma experiência completa</li><li>Economia ao longo do ano</li><li>Histórico das seleções</li><li>Identidade do corretor</li></ul><a class="btn btn-primary" href="/pagar?plan=anual">Escolher anual</a></article>'
   );
+  text = text.replace('href="/pdf">Começar no mensal', 'href="/pagar?plan=mensal">Começar no mensal');
+
+  text = text.replace('href="/pdf">Entrar', 'href="/login">Entrar');
+  text = text.replaceAll('href="/pdf"', 'href="/pagar"');
   text = text.replace('Escolha só como prefere pagar.', 'Um plano completo, sem complicar.');
-  text = text.replace('As mesmas funcionalidades nos dois formatos. Sem plano artificialmente capado e sem precisar escolher entre “básico” e “pro”.', 'O acesso custa R$ 39,90 por mês. Participantes convidados para o beta podem usar um cupom especial durante os testes.');
+  text = text.replace('As mesmas funcionalidades nos dois formatos. Sem plano artificialmente capado e sem precisar escolher entre “básico” e “pro”.', 'Mensal R$ 39,90 ou anual R$ 359. Convidados do beta usam um cupom promocional à parte durante os testes.');
   text = text.replace('Começar no mensal', 'Começar por R$ 39,90');
 
   return htmlResponse(text, headers);
@@ -127,6 +131,9 @@ export default {
 
     if (url.pathname === '/pagar') {
       return serveHtmlAsset('/pagar.html', request, url);
+    }
+    if (url.pathname === '/redefinir-senha') {
+      return serveHtmlAsset('/redefinir-senha.html', request, url);
     }
     if (url.pathname === '/pagamento/sucesso') {
       return serveHtmlAsset('/pagamento-sucesso.html', request, url);
