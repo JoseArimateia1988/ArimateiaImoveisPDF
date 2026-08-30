@@ -1,5 +1,21 @@
+import pg from 'pg';
+
 const BASE = process.env.TEST_BASE_URL || 'http://127.0.0.1:3001';
 const EXPECTED_DATABASE = process.env.EXPECTED_DATABASE || 'postgres';
+
+// Simula uma assinatura aprovada direto no banco — o smoke test não tem um token
+// real do Mercado Pago pra passar pelo checkout de verdade.
+async function ativarAssinaturaDeTeste(email, userId) {
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false } });
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS payment_access (email TEXT PRIMARY KEY,user_id UUID,status TEXT NOT NULL DEFAULT 'pending',payment_id TEXT,preference_id TEXT,amount REAL,currency TEXT,raw JSONB,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+    await pool.query(
+      `INSERT INTO payment_access (email,user_id,status,amount,currency,updated_at) VALUES ($1,$2,'authorized',39.90,'BRL',NOW())
+       ON CONFLICT(email) DO UPDATE SET status='authorized',user_id=EXCLUDED.user_id,updated_at=NOW()`,
+      [email, userId]
+    );
+  } finally { await pool.end(); }
+}
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -43,7 +59,15 @@ await request('/api/profile', {
   expected: 200,
 });
 
-console.log('4. salvar apresentação');
+console.log('4. bloqueado sem assinatura ativa');
+await request('/api/salvar', { method: 'POST', cookie: cookieA, body: { imoveis: [], cliente: 'x', modelo: 'bold' }, expected: 402 });
+
+console.log('4b. ativa assinatura de teste e libera o acesso');
+await ativarAssinaturaDeTeste(emailA, regA.data.user.id);
+const statusA = await request('/api/mercadopago/status', { cookie: cookieA, expected: 200 });
+assert(statusA.data.active === true, 'Assinatura de teste não ficou ativa');
+
+console.log('5. salvar apresentação');
 const fakePresentation = [{
   ok: true,
   dados: {
@@ -65,27 +89,27 @@ const saved = await request('/api/salvar', { method: 'POST', cookie: cookieA, bo
 const id = saved.data.id;
 assert(typeof id === 'string' && id.length === 16, 'ID da apresentação não tem 16 caracteres');
 
-console.log('5. histórico A isolado');
+console.log('6. histórico A isolado');
 const historyA = await request('/api/apresentacoes', { cookie: cookieA, expected: 200 });
 assert(Array.isArray(historyA.data) && historyA.data.some(x => x.id === id), 'Apresentação não apareceu no histórico A');
 
-console.log('6. link do cliente é público');
+console.log('7. link do cliente é público');
 const client = await request(`/ver/${id}`, { expected: 200 });
 assert(String(client.data).includes('Cliente Teste'), 'Link público não mostra o cliente');
 assert(String(client.data).includes('Corretor Teste'), 'Link público não preservou o perfil do corretor');
 
-console.log('7. resultado exige login');
+console.log('8. resultado exige login');
 await request(`/resultado/${id}`, { expected: 401 });
 
-console.log('8. resultado abre para dono');
+console.log('9. resultado abre para dono');
 const resultA = await request(`/resultado/${id}`, { cookie: cookieA, expected: 200 });
 assert(String(resultA.data).includes('Cliente Teste'), 'Resultado do dono não abriu corretamente');
 
-console.log('9. voto público e envio único');
+console.log('10. voto público e envio único');
 await request(`/api/votar/${id}`, { method: 'POST', body: { votos: { 0: 'like' } }, expected: 200 });
 await request(`/api/votar/${id}`, { method: 'POST', body: { votos: { 0: 'dislike' } }, expected: 409 });
 
-console.log('10. criar conta B e validar isolamento');
+console.log('11. criar conta B e validar isolamento');
 const regB = await request('/api/auth/register', { method: 'POST', body: { email: emailB, password: senha }, expected: 201 });
 assert(regB.cookie, 'Conta B não recebeu cookie de sessão');
 const cookieB = regB.cookie;
