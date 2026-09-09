@@ -57,52 +57,6 @@ function adminAuthorized(request) {
   return auth === `Bearer ${configured}`;
 }
 
-async function debugPgTest(request) {
-  if (!adminAuthorized(request)) return Response.json({ error: 'Não autorizado.' }, { status: 401 });
-  const out = {};
-
-  out.secretMeta = {
-    urlLen: (env.TEST_DATABASE_URL || '').length,
-    caLen: (env.TEST_DATABASE_CA_CERT || '').length,
-    caStarts: (env.TEST_DATABASE_CA_CERT || '').slice(0, 27),
-    certLen: (env.TEST_DATABASE_CLIENT_CERT || '').length,
-    certStarts: (env.TEST_DATABASE_CLIENT_CERT || '').slice(0, 27),
-    keyLen: (env.TEST_DATABASE_CLIENT_KEY || '').length,
-    keyStarts: (env.TEST_DATABASE_CLIENT_KEY || '').slice(0, 27),
-  };
-
-  try {
-    const { connect } = await import('cloudflare:sockets');
-    const url = new URL(env.TEST_DATABASE_URL.replace('postgresql://', 'https://'));
-    const socket = connect({ hostname: url.hostname, port: Number(url.port || 5432) });
-    await socket.opened;
-    out.rawSocket = 'ok - abriu conexão TCP';
-    await socket.close();
-  } catch (error) {
-    out.rawSocket = 'FALHOU: ' + error.message;
-  }
-
-  try {
-    const pgMod = await import('pg');
-    const { Pool } = pgMod.default;
-    const pool = new Pool({
-      connectionString: env.TEST_DATABASE_URL,
-      ssl: { ca: env.TEST_DATABASE_CA_CERT, cert: env.TEST_DATABASE_CLIENT_CERT, key: env.TEST_DATABASE_CLIENT_KEY, rejectUnauthorized: true },
-      connectionTimeoutMillis: 8000,
-      max: 1,
-    });
-    const r = await pool.query('SELECT current_database(), now()');
-    await pool.end();
-    out.ok = true;
-    out.result = r.rows[0];
-  } catch (error) {
-    out.ok = false;
-    out.pgError = error.message;
-    out.pgStack = String(error.stack || '').slice(0, 500);
-  }
-  return Response.json(out, { status: out.ok ? 200 : 500 });
-}
-
 async function adminOverview(request) {
   if (!adminAuthorized(request)) {
     return Response.json({ error: 'Não autorizado.' }, { status: 401 });
@@ -210,9 +164,6 @@ export default {
     }
     if (url.pathname === '/api/admin/overview') {
       return adminOverview(request);
-    }
-    if (url.pathname === '/api/admin/__debug_pg_test') {
-      return debugPgTest(request);
     }
     if (url.pathname === '/api/admin/grant-access' && request.method === 'POST') {
       return adminGrantAccess(request);

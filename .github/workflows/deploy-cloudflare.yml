@@ -22,19 +22,6 @@ jobs:
         run: npm install --ignore-scripts
       - name: Validate Worker before deploy
         run: npx wrangler deploy --dry-run
-      - name: (TEMP) Sync test Postgres secrets
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          TEST_DATABASE_CA_CERT: ${{ secrets.TEST_DATABASE_CA_CERT }}
-          TEST_DATABASE_CLIENT_CERT: ${{ secrets.TEST_DATABASE_CLIENT_CERT }}
-          TEST_DATABASE_CLIENT_KEY: ${{ secrets.TEST_DATABASE_CLIENT_KEY }}
-        run: |
-          printf '%s' "$TEST_DATABASE_URL" | npx wrangler versions secret put TEST_DATABASE_URL
-          printf '%s' "$TEST_DATABASE_CA_CERT" | npx wrangler versions secret put TEST_DATABASE_CA_CERT
-          printf '%s' "$TEST_DATABASE_CLIENT_CERT" | npx wrangler versions secret put TEST_DATABASE_CLIENT_CERT
-          printf '%s' "$TEST_DATABASE_CLIENT_KEY" | npx wrangler versions secret put TEST_DATABASE_CLIENT_KEY
       - name: Sync Anthropic secret
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
