@@ -7,9 +7,11 @@ import { randomUUID } from 'crypto';
 import { fetchPageContent } from './scraper.js';
 import { extractImovelDataWithUsage } from './claude.js';
 import { isOruloUrl, fetchOruloImovel } from './orulo.js';
-import { databaseMode, ensureSchema, savePresentation, getPresentation, listPresentations, saveVotes } from './db.js';
+import { databaseMode, ensureSchema, savePresentation, getPresentation, listPresentations, saveVotes, getPool, findUserByEmail } from './db.js';
+import { d1Configured, d1Query } from './d1.js';
 import { registerAuthRoutes, requireUser } from './auth.js';
-import { hasActiveSubscription } from './mercadopago.js';
+import { hasActiveSubscription, ACTIVE_STATUSES } from './mercadopago.js';
+import { savePaymentAccess, listPaymentAccess } from './payments.js';
 import { recordUsage, usageSummary } from './usage.js';
 import { errorPage } from './pages-v2.js';
 import { clientPageV4 } from './client-v4.js';
@@ -89,10 +91,12 @@ app.get('/img',async(req,res)=>{
   }catch(e){res.status(e?.code==='BAD_IMAGE_URL'?400:502).end()}
 });
 
-// Compatibilidade com o deploy Node/Render. No Worker estes caminhos são
-// resolvidos primeiro pelo Static Assets, sem custo de leitura via Express.
+// Compatibilidade com o deploy Node standalone (SquareCloud, Render). No Worker
+// da Cloudflare estes caminhos são resolvidos primeiro pelo Static Assets +
+// worker.js, sem passar por aqui — mas mantemos tudo igual pros dois lados
+// não ficarem divergentes de novo (já aconteceu uma vez com a landing).
 if(frontendDir){
-  app.get(['/pdf','/pdf/'],(_,res)=>{
+  app.get(['/pdf','/pdf/','/login','/cadastro','/app'],(_,res)=>{
     try{
       let html=fs.readFileSync(path.join(frontendDir,'index.html'),'utf8');
       html=html.replace('</head>','  <link rel="stylesheet" href="/pdf/qa-fixes.css">\n</head>');
@@ -105,14 +109,29 @@ if(frontendDir){
   app.get('/pdf/qa-fixes.css',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.css')));
   app.get('/pdf/v1.js',(_,res)=>res.sendFile(path.join(frontendDir,'v1.js')));
   app.get('/pdf/qa-fixes.js',(_,res)=>res.sendFile(path.join(frontendDir,'qa-fixes.js')));
+  app.get('/pagar',(_,res)=>res.sendFile(path.join(frontendDir,'pagar.html')));
+  app.get('/redefinir-senha',(_,res)=>res.sendFile(path.join(frontendDir,'redefinir-senha.html')));
+  app.get('/admin',(_,res)=>res.sendFile(path.join(frontendDir,'admin.html')));
+  app.get('/pagamento/sucesso',(_,res)=>res.sendFile(path.join(frontendDir,'pagamento-sucesso.html')));
+  app.get('/pagamento/pendente',(_,res)=>res.sendFile(path.join(frontendDir,'pagamento-pendente.html')));
+  app.get('/pagamento/erro',(_,res)=>res.sendFile(path.join(frontendDir,'pagamento-erro.html')));
   app.get('/',(_,res)=>{
     try{
       let html=fs.readFileSync(path.join(frontendDir,'landing.html'),'utf8');
-      const mensal=process.env.HOTMART_CHECKOUT_MENSAL||'/pdf';
-      const anual=process.env.HOTMART_CHECKOUT_ANUAL||'/pdf';
-      html=html.replaceAll('Em dúvida','Pendente');
-      html=html.replace('href="/pdf">Começar no mensal','href="'+mensal+'">Começar no mensal');
-      html=html.replace('href="/pdf">Escolher anual','href="'+anual+'">Escolher anual');
+      // Mesma ordem/lógica do serveLanding do worker.js: trocas específicas de
+      // cada card ANTES do replaceAll genérico de /pdf, senão o replaceAll
+      // consome os hrefs e essas buscas deixam de casar.
+      html=html.replace('R$ 29,90<span>/mês</span>','R$ 39,90<span>/mês</span>');
+      html=html.replace(
+        '<article class="plan featured"><small>Mais econômico · anual</small><strong>R$ 23,90<span>/mês</span></strong><span>R$ 286,80 cobrados por ano</span><ul><li>Tudo do plano</li><li>Mesma experiência completa</li><li>Economia ao longo do ano</li><li>Histórico das seleções</li><li>Identidade do corretor</li></ul><a class="btn btn-primary" href="/pdf">Escolher anual</a></article>',
+        '<article class="plan featured"><small>Mais econômico · anual</small><strong>R$ 359<span>/ano</span></strong><span>Cobrança única anual — equivale a ~R$ 29,90/mês</span><ul><li>Tudo do plano mensal</li><li>Mesma experiência completa</li><li>Economia ao longo do ano</li><li>Histórico das seleções</li><li>Identidade do corretor</li></ul><a class="btn btn-primary" href="/pagar?plan=anual">Escolher anual</a></article>'
+      );
+      html=html.replace('href="/pdf">Começar no mensal','href="/pagar?plan=mensal">Começar no mensal');
+      html=html.replace('href="/pdf">Entrar','href="/login">Entrar');
+      html=html.replaceAll('href="/pdf"','href="/pagar"');
+      html=html.replace('Escolha só como prefere pagar.','Um plano completo, sem complicar.');
+      html=html.replace('As mesmas funcionalidades nos dois formatos. Sem plano artificialmente capado e sem precisar escolher entre “básico” e “pro”.','Mensal R$ 39,90 ou anual R$ 359. Convidados do beta usam um cupom promocional à parte durante os testes.');
+      html=html.replace('Começar no mensal','Começar por R$ 39,90');
       html=html.replace('<span>Um produto Mood Labs</span>','<span>Um produto Mood Labs · <a href="/termos">Termos</a> · <a href="/privacidade">Privacidade</a></span>');
       res.type('html').send(html);
     }catch{res.status(500).send('Erro ao carregar a página do Busca Certa.');}
@@ -121,6 +140,54 @@ if(frontendDir){
   app.get('/privacidade',(_,res)=>res.sendFile(path.join(frontendDir,'privacidade.html')));
 }
 app.get('/planos',(_,res)=>res.redirect('/#precos'));
+
+function adminAuthorized(req){
+  const configured=String(process.env.BUSCA_CERTA_ADMIN_TOKEN||'');
+  if(!configured)return false;
+  return String(req.headers['authorization']||'')===`Bearer ${configured}`;
+}
+app.get('/api/admin/overview',async(req,res)=>{
+  if(!adminAuthorized(req))return res.status(401).json({error:'Não autorizado.'});
+  try{
+    const p=getPool();
+    let usersTotal=0,presentationsTotal=0,recentUsers=[],recentPresentations=[];
+    if(p){
+      usersTotal=Number((await p.query('SELECT COUNT(*) AS total FROM users')).rows[0]?.total||0);
+      presentationsTotal=Number((await p.query('SELECT COUNT(*) AS total FROM presentations')).rows[0]?.total||0);
+      recentUsers=(await p.query('SELECT id,email,created_at FROM users ORDER BY created_at DESC LIMIT 12')).rows;
+      recentPresentations=(await p.query('SELECT id,user_id,client_name,template,created_at FROM presentations ORDER BY created_at DESC LIMIT 12')).rows;
+    }else if(d1Configured()){
+      usersTotal=Number((await d1Query('SELECT COUNT(*) AS total FROM users')).rows[0]?.total||0);
+      presentationsTotal=Number((await d1Query('SELECT COUNT(*) AS total FROM presentations')).rows[0]?.total||0);
+      recentUsers=(await d1Query('SELECT id,email,created_at FROM users ORDER BY datetime(created_at) DESC LIMIT 12')).rows;
+      recentPresentations=(await d1Query('SELECT id,user_id,client_name,template,created_at FROM presentations ORDER BY datetime(created_at) DESC LIMIT 12')).rows;
+    }
+    const payments=await listPaymentAccess({limit:50});
+    const active=payments.filter(p=>ACTIVE_STATUSES.has(String(p.status||'').toLowerCase()));
+    const pending=payments.filter(p=>['pending','in_process'].includes(String(p.status||'').toLowerCase()));
+    const beta=payments.filter(p=>{
+      if(Number(p.amount)===10)return true;
+      try{return JSON.parse(String(p.raw||'{}'))?.coupon==='BETA10'}catch{return false}
+    });
+    res.set('Cache-Control','no-store').json({
+      generatedAt:new Date().toISOString(),
+      stats:{users:usersTotal,presentations:presentationsTotal,subscriptions:payments.length,active:active.length,pending:pending.length,beta:beta.length,official:Math.max(0,payments.length-beta.length)},
+      subscriptions:payments.map(p=>({email:p.email,status:p.status,amount:p.amount,currency:p.currency,reference:p.preference_id,createdAt:p.created_at,updatedAt:p.updated_at})),
+      recentUsers,recentPresentations,
+    });
+  }catch(e){console.error('Erro no admin overview:',e.message);res.status(500).json({error:'Não foi possível carregar o painel do Busca Certa.'})}
+});
+app.post('/api/admin/grant-access',async(req,res)=>{
+  if(!adminAuthorized(req))return res.status(401).json({error:'Não autorizado.'});
+  try{
+    const email=String(req.body?.email||'').trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'E-mail inválido.'});
+    const user=await findUserByEmail(email);
+    if(!user)return res.status(404).json({error:'Não existe conta com esse e-mail.'});
+    await savePaymentAccess({email,userId:user.id,status:'authorized',amount:0,currency:'BRL',raw:{type:'beta-grant',grantedAt:new Date().toISOString()}});
+    res.json({ok:true});
+  }catch(e){console.error('Erro ao liberar acesso beta:',e.message);res.status(500).json({error:'Não foi possível liberar o acesso.'})}
+});
 
 app.post('/api/extrair',requireUser,requireNamedProfile,requireActiveSubscription,async(req,res)=>{
   const urls=req.body?.urls;

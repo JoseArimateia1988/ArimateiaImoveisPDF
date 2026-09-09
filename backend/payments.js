@@ -118,6 +118,15 @@ export async function getPaymentAccessByUserId(userId) {
   return rows[0] || null;
 }
 
+export async function listPaymentAccess({ limit = 50 } = {}) {
+  await ensurePaymentsTable();
+  const lim = Math.max(1, Math.min(Number(limit) || 50, 500));
+  const p = getPool();
+  if (p) { const { rows } = await p.query(`SELECT email,user_id,status,amount,currency,preference_id,raw,created_at,updated_at FROM payment_access ORDER BY updated_at DESC LIMIT $1`, [lim]); return rows; }
+  const { rows } = await d1Query(`SELECT email,user_id,status,amount,currency,preference_id,raw,created_at,updated_at FROM payment_access ORDER BY datetime(updated_at) DESC LIMIT ?`, [lim]);
+  return rows;
+}
+
 export async function getSubscriptionPlan(code) {
   await ensurePaymentsTable();
   const p = getPool();
