@@ -8,9 +8,27 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_KEY;
 let pool = null;
 let schemaReady = false;
 
+function buildSsl() {
+  if (process.env.DATABASE_SSL === 'false') return false;
+  const ca = process.env.DATABASE_CA_CERT;
+  const cert = process.env.DATABASE_CLIENT_CERT;
+  const key = process.env.DATABASE_CLIENT_KEY;
+  // mTLS: alguns provedores (ex.: SquareCloud) exigem certificado de cliente, não só usuário/senha.
+  if (ca && cert && key) return { ca, cert, key, rejectUnauthorized: true };
+  return { rejectUnauthorized: false };
+}
 export function getPool() {
   if (!DATABASE_URL) return null;
-  if (!pool) pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }, max: Number(process.env.DATABASE_POOL_MAX || 5) });
+  if (!pool) {
+    const schema = process.env.DATABASE_SCHEMA;
+    pool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: buildSsl(),
+      max: Number(process.env.DATABASE_POOL_MAX || 5),
+      // Isola as tabelas do Busca Certa num schema próprio quando o banco é compartilhado com outro app.
+      options: schema ? `-c search_path=${schema}` : undefined,
+    });
+  }
   return pool;
 }
 export function requireProductDb() {

@@ -57,6 +57,25 @@ function adminAuthorized(request) {
   return auth === `Bearer ${configured}`;
 }
 
+async function debugPgTest(request) {
+  if (!adminAuthorized(request)) return Response.json({ error: 'Não autorizado.' }, { status: 401 });
+  try {
+    const pgMod = await import('pg');
+    const { Pool } = pgMod.default;
+    const pool = new Pool({
+      connectionString: env.TEST_DATABASE_URL,
+      ssl: { ca: env.TEST_DATABASE_CA_CERT, cert: env.TEST_DATABASE_CLIENT_CERT, key: env.TEST_DATABASE_CLIENT_KEY, rejectUnauthorized: true },
+      connectionTimeoutMillis: 8000,
+      max: 1,
+    });
+    const r = await pool.query('SELECT current_database(), now()');
+    await pool.end();
+    return Response.json({ ok: true, result: r.rows[0] });
+  } catch (error) {
+    return Response.json({ ok: false, error: error.message, stack: String(error.stack || '').slice(0, 800) }, { status: 500 });
+  }
+}
+
 async function adminOverview(request) {
   if (!adminAuthorized(request)) {
     return Response.json({ error: 'Não autorizado.' }, { status: 401 });
@@ -164,6 +183,9 @@ export default {
     }
     if (url.pathname === '/api/admin/overview') {
       return adminOverview(request);
+    }
+    if (url.pathname === '/api/admin/__debug_pg_test') {
+      return debugPgTest(request);
     }
     if (url.pathname === '/api/admin/grant-access' && request.method === 'POST') {
       return adminGrantAccess(request);
