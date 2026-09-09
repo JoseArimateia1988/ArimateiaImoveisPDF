@@ -4,7 +4,7 @@ on:
   push:
     branches: [produto-v1-review-pdf, busca-certa-visual, busca-certa-d1, busca-certa-cloudflare]
   pull_request:
-    branches: [main, busca-certa-d1]
+    branches: [main, busca-certa-d1, busca-certa-cloudflare]
 
 jobs:
   validate:
@@ -52,6 +52,8 @@ jobs:
           node --check db.js
           node --check d1.js
           node --check usage.js
+          node --check payments.js
+          node --check mercadopago.js
           node --check orulo.js
           node --check scraper.js
           node --check claude.js
