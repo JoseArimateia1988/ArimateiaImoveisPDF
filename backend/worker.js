@@ -59,6 +59,29 @@ function adminAuthorized(request) {
 
 async function debugPgTest(request) {
   if (!adminAuthorized(request)) return Response.json({ error: 'Não autorizado.' }, { status: 401 });
+  const out = {};
+
+  out.secretMeta = {
+    urlLen: (env.TEST_DATABASE_URL || '').length,
+    caLen: (env.TEST_DATABASE_CA_CERT || '').length,
+    caStarts: (env.TEST_DATABASE_CA_CERT || '').slice(0, 27),
+    certLen: (env.TEST_DATABASE_CLIENT_CERT || '').length,
+    certStarts: (env.TEST_DATABASE_CLIENT_CERT || '').slice(0, 27),
+    keyLen: (env.TEST_DATABASE_CLIENT_KEY || '').length,
+    keyStarts: (env.TEST_DATABASE_CLIENT_KEY || '').slice(0, 27),
+  };
+
+  try {
+    const { connect } = await import('cloudflare:sockets');
+    const url = new URL(env.TEST_DATABASE_URL.replace('postgresql://', 'https://'));
+    const socket = connect({ hostname: url.hostname, port: Number(url.port || 5432) });
+    await socket.opened;
+    out.rawSocket = 'ok - abriu conexão TCP';
+    await socket.close();
+  } catch (error) {
+    out.rawSocket = 'FALHOU: ' + error.message;
+  }
+
   try {
     const pgMod = await import('pg');
     const { Pool } = pgMod.default;
@@ -70,10 +93,14 @@ async function debugPgTest(request) {
     });
     const r = await pool.query('SELECT current_database(), now()');
     await pool.end();
-    return Response.json({ ok: true, result: r.rows[0] });
+    out.ok = true;
+    out.result = r.rows[0];
   } catch (error) {
-    return Response.json({ ok: false, error: error.message, stack: String(error.stack || '').slice(0, 800) }, { status: 500 });
+    out.ok = false;
+    out.pgError = error.message;
+    out.pgStack = String(error.stack || '').slice(0, 500);
   }
+  return Response.json(out, { status: out.ok ? 200 : 500 });
 }
 
 async function adminOverview(request) {
