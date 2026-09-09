@@ -228,4 +228,11 @@ app.get('/resultado/:id',requireUser,async(req,res)=>{
 });
 
 ensureSchema().catch(e=>console.warn('Banco não inicializado:',e.message));
-app.listen(PORT,()=>console.log(`Busca Certa rodando na porta ${PORT} · banco: ${databaseMode()}`));
+export default app;
+// Continua subindo sozinho normalmente (deploy standalone no SquareCloud, e o
+// import dinâmico que o worker.js da Cloudflare já faz hoje). Um lançador
+// combinado que queira montar este app como sub-rota por domínio, em vez de
+// ter sua própria porta, seta BUSCA_CERTA_SKIP_LISTEN=true antes de importar.
+if(!process.env.BUSCA_CERTA_SKIP_LISTEN){
+  app.listen(PORT,()=>console.log(`Busca Certa rodando na porta ${PORT} · banco: ${databaseMode()}`));
+}
